@@ -1,0 +1,38 @@
+sequenceDiagram
+    participant H as Host client
+    participant P as Participant clients
+    participant API as Flask routes (sessions.py)
+    participant CE as clustering_controller.py
+    participant Gemini as Google Gemini API
+    participant DB as Supabase
+    participant WS as websocket_manager.py
+
+    H->>API: POST /sessions/:code/cluster
+    API->>WS: session:clustering (broadcast)
+    WS->>P: session:clustering
+
+    alt has answered clusters and new submissions since last pass
+        API->>CE: incremental_cluster(new_subs, answered_clusters, tags)
+        CE->>Gemini: prompt: assign new submissions to existing clusters or spawn new ones
+        Gemini-->>CE: {assignments, newClusters}
+        CE-->>API: {updatedClusters, newClusters}
+        API->>DB: update_cluster_query / save_new_clusters
+    else full re-cluster
+        API->>CE: cluster(submissions, tags)
+        CE->>Gemini: prompt: group semantically similar questions
+        Gemini-->>CE: [{representativeQuery, submissionCount, questions}]
+        CE-->>API: normalized clusters
+        API->>DB: save_clusters (replace session's cluster rows)
+    end
+
+    API->>WS: session:results {clusters, submissionsAtLastCluster}
+    WS->>H: session:results
+    WS->>P: session:results
+
+    opt host notes present
+        API->>CE: generate_suggested_answer(cluster, hostNotes, title, description)
+        CE->>Gemini: RAG prompt grounded in host notes
+        Gemini-->>CE: suggested answer text
+        API->>WS: cluster:suggestions
+        WS->>H: cluster:suggestions
+    end

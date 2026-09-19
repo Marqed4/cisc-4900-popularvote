@@ -1,0 +1,60 @@
+erDiagram
+    SESSIONS ||--o{ SUBMISSIONS : "session_code"
+    SESSIONS ||--o{ CLUSTERS : "session_code"
+    SESSIONS ||--o{ USER_SESSIONS : "session_code"
+
+    SESSIONS {
+        text code PK
+        text phase
+        text_array tags
+        text title
+        text description
+        text host_notes
+        int expansion_round
+        text curators
+        int submissions_at_last_cluster
+        boolean encrypted
+        timestamptz created_at
+    }
+
+    SUBMISSIONS {
+        uuid id PK
+        text session_code FK
+        text content "ciphertext+nonce JSON when session is encrypted"
+        text participant_answer
+        boolean is_curator
+        timestamptz created_at
+    }
+
+    CLUSTERS {
+        uuid id PK
+        text session_code FK
+        text representative_query
+        int submission_count
+        jsonb questions
+        text answer
+        int upvote_count
+        jsonb previewed_questions
+        jsonb selected_questions
+        jsonb contextual_facts
+        jsonb participant_answers
+        timestamptz created_at
+    }
+
+    USER_SESSIONS {
+        uuid id PK
+        uuid user_id FK
+        text session_code
+        text role
+        boolean dismissed
+        timestamptz saved_at
+    }
+
+    USER_SUBMISSIONS {
+        uuid id PK
+        uuid user_id FK
+        text session_code
+        uuid submission_id
+        text content
+        timestamptz submitted_at
+    }

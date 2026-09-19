@@ -1,0 +1,158 @@
+-- ============================================================
+-- CLEANUP
+-- ============================================================
+
+DELETE FROM clusters WHERE session_code = 'X4T9M2';
+DELETE FROM submissions WHERE session_code = 'X4T9M2';
+DELETE FROM user_sessions WHERE session_code = 'X4T9M2';
+DELETE FROM sessions WHERE code = 'X4T9M2';
+
+-- ============================================================
+-- INSERT SESSION
+-- ============================================================
+
+INSERT INTO sessions (
+  code, phase, tags, title, description, host_notes,
+  expansion_round, curators, submissions_at_last_cluster
+)
+VALUES (
+  'X4T9M2',
+  'RESULTS',
+  ARRAY['magic','college','winterhold'],
+  'College of Winterhold 2026 Council of Arcane Affairs',
+  'A curated collection of questions from apprentices, researchers, and visiting battlemages.',
+  '',
+  0,
+  '[]',
+  18
+);
+
+-- ============================================================
+-- LINK SESSION TO HOST
+-- ============================================================
+
+INSERT INTO user_sessions (user_id, session_code, role)
+VALUES (
+  'f89c171e-b81a-487c-8e89-763033f5988e',
+  'X4T9M2',
+  'host'
+);
+
+-- ============================================================
+-- INSERT SUBMISSIONS (18 total)
+-- ============================================================
+
+INSERT INTO submissions (id, session_code, content, participant_answer, is_curator)
+VALUES
+  (gen_random_uuid(),'X4T9M2','What safeguards exist when experimenting with unstable runes?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','Are students allowed to study Dwemer tonal magic?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','How dangerous is long-term exposure to conjured flame atronachs?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','Can students from Cyrodiil apply for the Master Illusion track?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','What creatures are permitted as companions during field research?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','Is tuition reduced for students assisting faculty research?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','How often are the Arcane Laboratories inspected for contamination?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','Are necromancy demonstrations allowed during lectures?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','What is the safest way to practice Alteration spells on wildlife?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','Do Enchanting students receive priority access to soul gem reserves?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','How does the College respond to accidental planar breaches?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','Are there scholarships for students specializing in Restoration?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','Can students keep minor magical constructs in their dorm rooms?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','What are the rules for enchanting personal armor?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','Is forbidden knowledge stored beneath the Arcanaeum?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','How are spellcasting proficiency exams graded?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','Are there penalties for summoning Daedra on campus grounds?',NULL,false),
+  (gen_random_uuid(),'X4T9M2','What protections exist to prevent magical accidents during field excursions?',NULL,false);
+
+-- ============================================================
+-- INSERT CLUSTERS (5 clusters)
+-- ============================================================
+
+INSERT INTO clusters (
+  id, session_code, representative_query, submission_count,
+  questions, answer, upvote_count,
+  previewed_questions, selected_questions, contextual_facts, participant_answers
+)
+VALUES
+
+-- ============================================================
+-- CLUSTER 1: Forbidden Knowledge / Daedric / Planar
+-- ============================================================
+
+(
+  gen_random_uuid(),'X4T9M2',
+  'What restrictions exist on researching forbidden or planar knowledge?',
+  4,
+  '[{"text":"Are students allowed to study Dwemer tonal magic?","upvoteCount":6},
+    {"text":"Is forbidden knowledge stored beneath the Arcanaeum?","upvoteCount":7},
+    {"text":"How does the College respond to accidental planar breaches?","upvoteCount":5},
+    {"text":"Are there penalties for summoning Daedra on campus grounds?","upvoteCount":6}]'::jsonb,
+  'The College enforces strict oversight on any research involving Dwemer tonal architecture, Daedric entities, or planar instability. Access to restricted archives requires approval from multiple senior faculty members. Unauthorized summoning or planar experimentation is grounds for immediate disciplinary review.',
+  21,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+-- ============================================================
+-- CLUSTER 2: Creatures, Summons, Wildlife
+-- ============================================================
+
+(
+  gen_random_uuid(),'X4T9M2',
+  'What creatures and summons are permitted during research and training?',
+  4,
+  '[{"text":"What creatures are permitted as companions during field research?","upvoteCount":3},
+    {"text":"How dangerous is long-term exposure to conjured flame atronachs?","upvoteCount":4},
+    {"text":"Can students keep minor magical constructs in their dorm rooms?","upvoteCount":5},
+    {"text":"What is the safest way to practice Alteration spells on wildlife?","upvoteCount":2}]'::jsonb,
+  'Only non-hostile familiars and stable constructs may accompany students during sanctioned fieldwork. Flame atronachs require distance protocols due to heat saturation risks. Wildlife spell practice must occur in designated outdoor zones under faculty supervision.',
+  14,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+-- ============================================================
+-- CLUSTER 3: Safety, Labs, Accidents
+-- ============================================================
+
+(
+  gen_random_uuid(),'X4T9M2',
+  'How does the College ensure safety in laboratories and during excursions?',
+  4,
+  '[{"text":"How often are the Arcane Laboratories inspected for contamination?","upvoteCount":3},
+    {"text":"What protections exist to prevent magical accidents during field excursions?","upvoteCount":5},
+    {"text":"What safeguards exist when experimenting with unstable runes?","upvoteCount":4},
+    {"text":"Are necromancy demonstrations allowed during lectures?","upvoteCount":6}]'::jsonb,
+  'Arcane Laboratories undergo weekly inspections to ensure no lingering magical residue threatens student safety. Field excursions are protected by layered wards designed to contain misfires and environmental hazards. Necromancy demonstrations are restricted to certified faculty and require prior approval.',
+  18,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+-- ============================================================
+-- CLUSTER 4: Tuition, Scholarships, International Students
+-- ============================================================
+
+(
+  gen_random_uuid(),'X4T9M2',
+  'What are the College policies on tuition, scholarships, and international applicants?',
+  4,
+  '[{"text":"Can students from Cyrodiil apply for the Master Illusion track?","upvoteCount":4},
+    {"text":"Is tuition reduced for students assisting faculty research?","upvoteCount":6},
+    {"text":"Are there scholarships for students specializing in Restoration?","upvoteCount":3},
+    {"text":"Do Enchanting students receive priority access to soul gem reserves?","upvoteCount":2}]'::jsonb,
+  'Applicants from all provinces may pursue advanced magical tracks if they meet competency requirements. Tuition reductions are available for students who contribute to faculty-led research initiatives. Restoration scholarships remain in high demand due to Skyrim’s ongoing need for trained healers.',
+  16,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+-- ============================================================
+-- CLUSTER 5: Exams, Enchanting, Academic Evaluation
+-- ============================================================
+
+(
+  gen_random_uuid(),'X4T9M2',
+  'How does the College evaluate spellcasting proficiency and regulate enchanting?',
+  2,
+  '[{"text":"How are spellcasting proficiency exams graded?","upvoteCount":4},
+    {"text":"What are the rules for enchanting personal armor?","upvoteCount":3}]'::jsonb,
+  'Proficiency exams emphasize precision, control, and theoretical understanding rather than raw magical output. Enchanting personal armor is permitted only after completing the College’s mandatory safety certification course.',
+  9,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+);

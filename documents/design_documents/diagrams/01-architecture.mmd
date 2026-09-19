@@ -1,0 +1,25 @@
+flowchart LR
+    subgraph Client["Browser (frontend/)"]
+        UI["React UI"]
+        Socket["socket.io-client"]
+    end
+
+    subgraph Backend["Flask backend (backend/)"]
+        Routes["REST routes\nsessions / submissions / chat / expand"]
+        WSM["websocket_manager.py\n(Flask-SocketIO)"]
+        SM["SessionManager\n(in-memory cache)"]
+        CE["clustering_controller.py"]
+    end
+
+    Supabase[("Supabase\n(Postgres)")]
+    Gemini[("Google Gemini API\ngemini-2.5-flash")]
+
+    UI -- "REST (fetch)" --> Routes
+    Socket <-- "WebSocket (Socket.IO)" --> WSM
+    Routes --> SM
+    WSM --> SM
+    SM <-- "read/write" --> Supabase
+    Routes -- "cluster / chat / suggestions\n(skipped for encrypted sessions)" --> CE
+    CE <--> Gemini
+    Routes -- "session:results, session:sync,\nparticipant:*, cluster:*" --> WSM
+    WSM -- "broadcast to room (session code)" --> Socket

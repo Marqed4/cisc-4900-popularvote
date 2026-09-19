@@ -1,0 +1,21 @@
+sequenceDiagram
+    participant H as Host client
+    participant Part as Target participant
+    participant API as POST /sessions/:code/curators
+    participant SM as SessionManager.promote_curator
+    participant DB as Supabase (sessions.curators)
+    participant WS as websocket_manager.py
+
+    H->>API: {socketId: Part's socket id}
+    API->>SM: promote_curator(code, socketId)
+    alt socketId already a curator
+        SM->>SM: remove from curators list (demote)
+    else not yet a curator
+        SM->>SM: append to curators list (promote)
+    end
+    SM->>DB: update_curators(code, curators)
+    SM-->>API: updated curators list
+    API->>WS: curator:promoted {curators, socketId}
+    WS->>H: broadcast
+    WS->>Part: broadcast
+    Note over Part: Part's client now unlocks curator-only UI\n(answer clusters, see host notes context)\nif its own socketId is in the curators list

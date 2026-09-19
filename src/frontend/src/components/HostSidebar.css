@@ -1,0 +1,285 @@
+.hd-sidebar {
+  border-right: 1px solid var(--border);
+  padding: 1.25rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-y: auto;
+}
+
+.hd-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--border);
+}
+.hd-card:last-child { border-bottom: none; }
+
+.hd-card-title {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.hd-code {
+  font-family: 'DM Mono', monospace;
+  font-size: 1.75rem;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  color: var(--text);
+  line-height: 1;
+  background: var(--surface-sub);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.625rem 0.75rem;
+  text-align: center;
+}
+
+.hd-code-actions {
+  display: flex;
+  gap: 0.375rem;
+}
+
+.hd-url {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.55rem;
+  color: var(--text-2);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.hd-qr-canvas {
+  display: block;
+  margin: 0 auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px;
+  background: var(--surface);
+}
+[data-theme="dark"] .hd-qr-canvas { filter: invert(1); }
+
+.hd-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.hd-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.82rem;
+  font-style: italic;
+  color: var(--text-2);
+  background: var(--surface-sub);
+  padding: 2px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.hd-tag-remove {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 0.85rem;
+  line-height: 1;
+  padding: 0;
+  transition: color 0.15s;
+}
+.hd-tag-remove:hover { color: var(--red); }
+
+.hd-tag-input-row {
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--surface-sub);
+}
+
+.hd-tag-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.9rem;
+  font-style: italic;
+  color: var(--text);
+  padding: 6px 10px;
+  outline: none;
+}
+.hd-tag-input::placeholder { color: var(--text-3); }
+
+.hd-tag-add-btn {
+  background: none;
+  border: none;
+  border-left: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 1.1rem;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, color 0.15s;
+}
+.hd-tag-add-btn:hover { background: var(--surface); color: var(--text); }
+
+.hd-btn-ghost {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--text-2);
+  cursor: pointer;
+  padding: 5px 12px;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.hd-btn-ghost:hover { border-color: var(--border-str); color: var(--text); background: var(--surface-sub); }
+.hd-btn-ghost--full { width: 100%; padding: 0.6rem 1rem; font-size: 0.975rem; }
+
+.hd-btn-primary {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.975rem;
+  font-style: italic;
+  cursor: pointer;
+  border: none;
+  border-radius: 8px;
+  background: var(--text);
+  color: var(--bg);
+  transition: opacity 0.15s, transform 0.1s;
+}
+.hd-btn-primary:hover:not(:disabled)  { opacity: 0.88; }
+.hd-btn-primary:active:not(:disabled) { transform: scale(0.99); }
+.hd-btn-primary:disabled { background: var(--border); color: var(--text-3); cursor: not-allowed; }
+
+.hd-btn-expand {
+  background: var(--blue);
+}
+.hd-btn-expand:hover:not(:disabled) { opacity: 0.88; }
+
+.hd-btn-end {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  background: var(--red);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-family: 'EB Garamond', serif;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+.hd-btn-end:hover:not(:disabled)  { opacity: 0.88; }
+.hd-btn-end:active:not(:disabled) { transform: scale(0.99); }
+.hd-btn-end:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.hd-error {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--red);
+  background: var(--delete-hover-bg);
+  border: 1px solid var(--red);
+  border-radius: 7px;
+  padding: 6px 10px;
+  line-height: 1.5;
+}
+
+.hd-clustering-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'EB Garamond', serif;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--text-2);
+}
+
+.hd-spinner {
+  width: 13px;
+  height: 13px;
+  border: 2px solid var(--border);
+  border-top-color: var(--text);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.hd-ended-msg {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.875rem;
+  font-style: italic;
+  color: var(--text-3);
+  text-align: center;
+  padding: 0.25rem 0;
+}
+
+.hd-notes-private {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  background: var(--surface-sub);
+  color: var(--text-3);
+  padding: 1px 5px;
+  border-radius: 999px;
+  margin-left: 0.35rem;
+  vertical-align: middle;
+}
+
+.hd-notes-hint {
+  font-family: 'EB Garamond', serif;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--text);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.hd-notes-textarea {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.72rem;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--surface-sub);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.hd-notes-textarea:focus {
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+.hd-notes-textarea::placeholder { color: var(--text-3); }
+
+.hd-notes-actions { display: flex; gap: 0.5rem; }
+.hd-notes-file-input { display: none; }
+
+.hd-notes-error {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.68rem;
+  color: var(--red);
+}
+
+.hd-curator-note {
+  color: var(--text-2);
+}

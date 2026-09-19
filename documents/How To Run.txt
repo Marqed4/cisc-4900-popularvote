@@ -1,0 +1,25 @@
+1. Unpackage the PopularVote.zip/rar on your Desktop
+2. Open Powershell
+3. type: cd .\Desktop\PopularVote
+4. type: npm install
+5. type: cd .\server
+6. type: npm install
+7. Create .env file in root/PopularVote:
+
+7.1: Paste & add keys
+
+{/*Check slack for keys.*/}
+
+VITE_SUPABASE_URL=
+VITE_SUPABASE_ANON_KEY=
+
+8. Create .env file in server/:
+
+8.1: Paste & add keys
+
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+GEMINI_API_KEY=
+PORT=2167
+
+9. Run `npm run dev` from the root/PopularVote

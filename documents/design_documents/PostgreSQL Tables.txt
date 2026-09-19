@@ -1,0 +1,85 @@
+-- ============================================================
+-- PopularVote Schema
+-- ============================================================
+
+DROP TABLE IF EXISTS user_submissions CASCADE;
+DROP TABLE IF EXISTS user_sessions CASCADE;
+DROP TABLE IF EXISTS clusters CASCADE;
+DROP TABLE IF EXISTS submissions CASCADE;
+DROP TABLE IF EXISTS sessions CASCADE;
+
+create table sessions (
+  code text primary key,
+  phase text not null default 'OPEN',
+  tags text[] default '{}'::text[],
+  title text,
+  description text,
+  host_notes text,
+  expansion_round integer default 0,
+  curators text default '[]',
+  submissions_at_last_cluster integer default 0,
+  encrypted boolean not null default false,
+  created_at timestamptz default now()
+);
+
+create table submissions (
+  id uuid primary key default gen_random_uuid(),
+  session_code text references sessions(code) on delete cascade,
+  content text not null,
+  participant_answer text,
+  is_curator boolean default false,
+  created_at timestamptz default now()
+);
+
+create table clusters (
+  id uuid primary key default gen_random_uuid(),
+  session_code text references sessions(code) on delete cascade,
+  representative_query text,
+  submission_count integer default 0,
+  questions jsonb default '[]'::jsonb,
+  answer text,
+  upvote_count integer default 0,
+  previewed_questions jsonb default '[]'::jsonb,
+  selected_questions jsonb default '[]'::jsonb,
+  contextual_facts jsonb default '[]'::jsonb,
+  participant_answers jsonb default '[]'::jsonb,
+  created_at timestamptz default now()
+);
+
+create table user_sessions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  session_code text,
+  role text,
+  dismissed boolean default false,
+  saved_at timestamptz default now(),
+  unique (user_id, session_code)
+);
+
+create table user_submissions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid references auth.users(id) on delete cascade,
+  session_code text,
+  submission_id uuid,
+  content text,
+  submitted_at timestamptz default now(),
+  unique (user_id, submission_id)
+);
+
+ALTER TABLE sessions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE submissions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE clusters DISABLE ROW LEVEL SECURITY;
+ALTER TABLE user_sessions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE user_submissions DISABLE ROW LEVEL SECURITY;
+
+GRANT ALL ON sessions TO service_role, anon;
+GRANT ALL ON submissions TO service_role, anon;
+GRANT ALL ON clusters TO service_role, anon;
+GRANT ALL ON user_sessions TO service_role, anon;
+GRANT ALL ON user_submissions TO service_role, anon;
+
+-- ============================================================
+-- Migration for an already-deployed database (run this instead
+-- of the DROP/CREATE above if the tables already exist and hold data)
+-- ============================================================
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS encrypted boolean NOT NULL DEFAULT false;

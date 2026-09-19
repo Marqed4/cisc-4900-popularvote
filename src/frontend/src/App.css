@@ -1,0 +1,50 @@
+/* Background lives on <html>, set via JS in App.jsx */
+/* Scrim overlay so white text stays readable on bright images */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.22);
+  pointer-events: none;
+  z-index: 0;
+}
+
+#root {
+  position: relative;
+  z-index: 1;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--color-background-primary, #fff);
+  color: var(--color-text-primary, #111);
+}
+
+body, #root {
+  min-height: 100vh;
+  background: transparent;
+}
+
+.app-view {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-back-btn {
+  align-self: flex-start;
+  margin: 0.75rem 1rem;
+}
+
+.app-view-label {
+  padding: 1rem;
+  font-family: monospace;
+}
+

@@ -1,0 +1,9 @@
+foreach ($gif in Get-ChildItem "*.gif") {
+  & "C:\Users\Derpe\Downloads\ffmpeg-2026-03-18-git-106616f13d-full_build\bin\ffmpeg.exe" -i $gif.FullName `
+    -vf "fps=6,scale=640:-1:flags=lanczos,split[s0][s1];[s0]palettegen=max_colors=32[p];[s1][p]paletteuse=dither=bayer" `
+    -loop 0 `
+    "$($gif.DirectoryName)\$($gif.BaseName)-compressed.gif"
+}
+
+Notes:
+I will run exactly from the directory where all gifs I want altered are located.

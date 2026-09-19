@@ -1,0 +1,138 @@
+-- ============================================================
+-- CLEANUP
+-- ============================================================
+
+DELETE FROM clusters WHERE session_code = 'CS2SK1';
+DELETE FROM submissions WHERE session_code = 'CS2SK1';
+DELETE FROM user_sessions WHERE session_code = 'CS2SK1';
+DELETE FROM sessions WHERE code = 'CS2SK1';
+
+-- ============================================================
+-- INSERT SESSION
+-- ============================================================
+
+INSERT INTO sessions (
+  code, phase, tags, title, description, host_notes,
+  expansion_round, curators, submissions_at_last_cluster
+)
+VALUES (
+  'CS2SK1',
+  'RESULTS',
+  ARRAY['cs2','skins','trading','economy','steam'],
+  'CS2 Skin Economy After the $2B Market Cap Collapse',
+  'Community questions on what the market crash means for traders, investors, and everyday players.',
+  'Session compiled by host f89c171e-b81a-487c-8e89-763033f5988e.',
+  0,
+  '[]',
+  18
+);
+
+-- ============================================================
+-- LINK SESSION TO HOST
+-- ============================================================
+
+INSERT INTO user_sessions (user_id, session_code, role)
+VALUES (
+  'f89c171e-b81a-487c-8e89-763033f5988e',
+  'CS2SK1',
+  'host'
+);
+
+-- ============================================================
+-- INSERT SUBMISSIONS (18 total)
+-- ============================================================
+
+INSERT INTO submissions (id, session_code, content, participant_answer, is_curator)
+VALUES
+  (gen_random_uuid(),'CS2SK1','What caused the $2 billion drop in the CS2 skin market cap?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','Are knife and glove skins still holding their value post-crash?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','Should I sell my inventory now or wait for recovery?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','How did third-party trading sites contribute to the collapse?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','Is the Steam Marketplace the safest place to trade after the crash?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','Did Valve do anything to cause or prevent the market crash?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','Which skin tiers were hit hardest: Covert, Classified, or Mil-Spec?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','Are StatTrak items more or less resilient to market downturns?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','How does the crash affect case opening profitability?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','Will Operation drops or new case releases help stabilize prices?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','What role did gambling sites play in inflating the market beforehand?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','Are float values still a major pricing factor after the crash?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','How do skin prices on CS2 compare to TF2 and Dota 2 after the drop?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','Is it a good time to buy discounted skins as a long-term investment?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','What happened to high-tier contraband skins like the Howl?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','How are professional players and streamers responding to the crash?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','Can the CS2 skin economy realistically recover to previous highs?',NULL,false),
+  (gen_random_uuid(),'CS2SK1','What legal or regulatory risks exist for skin trading platforms?',NULL,false);
+
+-- ============================================================
+-- INSERT CLUSTERS (5 clusters)
+-- ============================================================
+
+INSERT INTO clusters (
+  id, session_code, representative_query, submission_count,
+  questions, answer, upvote_count,
+  previewed_questions, selected_questions, contextual_facts, participant_answers
+)
+VALUES
+
+(
+  gen_random_uuid(),'CS2SK1',
+  'What caused the market crash and who is responsible?',
+  4,
+  '[{"text":"What caused the $2 billion drop in the CS2 skin market cap?","upvoteCount":9},
+    {"text":"How did third-party trading sites contribute to the collapse?","upvoteCount":7},
+    {"text":"Did Valve do anything to cause or prevent the market crash?","upvoteCount":8},
+    {"text":"What role did gambling sites play in inflating the market beforehand?","upvoteCount":6}]'::jsonb,
+  'The collapse stemmed from a combination of Valve policy changes restricting third-party API access, a broader crackdown on skin gambling platforms, and speculative overvaluation of high-tier items. Valve has not issued an official statement attributing blame, but trading restrictions significantly reduced liquidity.',
+  30,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'CS2SK1',
+  'Which skin categories were most affected by the crash?',
+  4,
+  '[{"text":"Are knife and glove skins still holding their value post-crash?","upvoteCount":8},
+    {"text":"Which skin tiers were hit hardest: Covert, Classified, or Mil-Spec?","upvoteCount":6},
+    {"text":"Are StatTrak items more or less resilient to market downturns?","upvoteCount":5},
+    {"text":"What happened to high-tier contraband skins like the Howl?","upvoteCount":7}]'::jsonb,
+  'Covert and contraband items saw the steepest absolute value drops, though their relative floor held better than mid-tier Classified skins. StatTrak variants retained a premium but were not immune. Knives and gloves lost significant value but remain the most liquid high-end assets.',
+  26,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'CS2SK1',
+  'Should I sell, hold, or buy during the crash?',
+  4,
+  '[{"text":"Should I sell my inventory now or wait for recovery?","upvoteCount":10},
+    {"text":"Is it a good time to buy discounted skins as a long-term investment?","upvoteCount":7},
+    {"text":"How does the crash affect case opening profitability?","upvoteCount":5},
+    {"text":"Are float values still a major pricing factor after the crash?","upvoteCount":4}]'::jsonb,
+  'Timing the skin market is highly speculative. Selling now locks in losses but reduces exposure to further decline. Buying discounted skins carries long-term upside if the market recovers, but recovery timelines are uncertain. Case opening expected value has worsened as case prices remained stable while skin drops declined in value.',
+  26,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'CS2SK1',
+  'What platforms and trading options are safest right now?',
+  3,
+  '[{"text":"Is the Steam Marketplace the safest place to trade after the crash?","upvoteCount":6},
+    {"text":"How do skin prices on CS2 compare to TF2 and Dota 2 after the drop?","upvoteCount":3},
+    {"text":"What legal or regulatory risks exist for skin trading platforms?","upvoteCount":5}]'::jsonb,
+  'The Steam Marketplace remains the most secure platform, though its 15% fee and wallet-lock limit flexibility. Third-party sites carry legal risk following increased regulatory scrutiny in multiple jurisdictions. TF2 and Dota 2 economies were less affected due to smaller speculative markets.',
+  14,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'CS2SK1',
+  'What does the future of the CS2 skin economy look like?',
+  3,
+  '[{"text":"Will Operation drops or new case releases help stabilize prices?","upvoteCount":6},
+    {"text":"How are professional players and streamers responding to the crash?","upvoteCount":4},
+    {"text":"Can the CS2 skin economy realistically recover to previous highs?","upvoteCount":8}]'::jsonb,
+  'New operations and case releases historically generate short-term price volatility before stabilizing. Pro players and content creators have largely moved to cautious public stances. A full recovery to pre-crash highs would require renewed player growth, restored third-party ecosystem trust, and sustained Valve engagement.',
+  18,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+);

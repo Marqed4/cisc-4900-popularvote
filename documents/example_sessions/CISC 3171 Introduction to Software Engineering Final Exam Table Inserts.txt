@@ -1,0 +1,138 @@
+-- ============================================================
+-- CLEANUP
+-- ============================================================
+
+DELETE FROM clusters WHERE session_code = 'SE4010';
+DELETE FROM submissions WHERE session_code = 'SE4010';
+DELETE FROM user_sessions WHERE session_code = 'SE4010';
+DELETE FROM sessions WHERE code = 'SE4010';
+
+-- ============================================================
+-- INSERT SESSION
+-- ============================================================
+
+INSERT INTO sessions (
+  code, phase, tags, title, description, host_notes,
+  expansion_round, curators, submissions_at_last_cluster
+)
+VALUES (
+  'SE4010',
+  'RESULTS',
+  ARRAY['software-engineering','final-exam','tsui','karam','bernal','sdlc','agile'],
+  'Intro to Software Engineering Final Exam: Essentials of Software Engineering (Tsui, Karam, Bernal)',
+  'Student questions covering key concepts from Essentials of Software Engineering by Frank Tsui, Orlando Karam, and Barbara Bernal.',
+  'Session compiled by host f89c171e-b81a-487c-8e89-763033f5988e.',
+  0,
+  '[]',
+  18
+);
+
+-- ============================================================
+-- LINK SESSION TO HOST
+-- ============================================================
+
+INSERT INTO user_sessions (user_id, session_code, role)
+VALUES (
+  'f89c171e-b81a-487c-8e89-763033f5988e',
+  'SE4010',
+  'host'
+);
+
+-- ============================================================
+-- INSERT SUBMISSIONS (18 total)
+-- ============================================================
+
+INSERT INTO submissions (id, session_code, content, participant_answer, is_curator)
+VALUES
+  (gen_random_uuid(),'SE4010','What are the main phases of the Software Development Life Cycle?',NULL,false),
+  (gen_random_uuid(),'SE4010','How does Agile differ from the Waterfall model?',NULL,false),
+  (gen_random_uuid(),'SE4010','What is the difference between functional and non-functional requirements?',NULL,false),
+  (gen_random_uuid(),'SE4010','What is cohesion and coupling and why do they matter in design?',NULL,false),
+  (gen_random_uuid(),'SE4010','How does unit testing differ from integration testing?',NULL,false),
+  (gen_random_uuid(),'SE4010','What is a use case and how is it used in requirements gathering?',NULL,false),
+  (gen_random_uuid(),'SE4010','What is the purpose of a software design pattern?',NULL,false),
+  (gen_random_uuid(),'SE4010','How does risk management fit into software project planning?',NULL,false),
+  (gen_random_uuid(),'SE4010','What is the difference between black-box and white-box testing?',NULL,false),
+  (gen_random_uuid(),'SE4010','How is software complexity measured using cyclomatic complexity?',NULL,false),
+  (gen_random_uuid(),'SE4010','What is refactoring and when should it be applied?',NULL,false),
+  (gen_random_uuid(),'SE4010','How does version control support team-based software development?',NULL,false),
+  (gen_random_uuid(),'SE4010','What is the role of a Software Requirements Specification (SRS) document?',NULL,false),
+  (gen_random_uuid(),'SE4010','What are the key principles of object-oriented design?',NULL,false),
+  (gen_random_uuid(),'SE4010','How does Scrum organize work across sprints and roles?',NULL,false),
+  (gen_random_uuid(),'SE4010','What is the difference between verification and validation?',NULL,false),
+  (gen_random_uuid(),'SE4010','How is software maintenance categorized (corrective, adaptive, perfective)?',NULL,false),
+  (gen_random_uuid(),'SE4010','What metrics are used to evaluate software quality?',NULL,false);
+
+-- ============================================================
+-- INSERT CLUSTERS (5 clusters)
+-- ============================================================
+
+INSERT INTO clusters (
+  id, session_code, representative_query, submission_count,
+  questions, answer, upvote_count,
+  previewed_questions, selected_questions, contextual_facts, participant_answers
+)
+VALUES
+
+(
+  gen_random_uuid(),'SE4010',
+  'What are the core software development process models?',
+  4,
+  '[{"text":"What are the main phases of the Software Development Life Cycle?","upvoteCount":8},
+    {"text":"How does Agile differ from the Waterfall model?","upvoteCount":9},
+    {"text":"How does Scrum organize work across sprints and roles?","upvoteCount":7},
+    {"text":"How does risk management fit into software project planning?","upvoteCount":5}]'::jsonb,
+  'The SDLC typically includes requirements, design, implementation, testing, deployment, and maintenance phases. Waterfall executes these sequentially with limited backtracking; Agile (including Scrum) iterates in short sprints with continuous feedback. Scrum defines roles (Product Owner, Scrum Master, Development Team), artifacts (Product Backlog, Sprint Backlog), and ceremonies (standups, retrospectives). Risk management involves identifying, prioritizing, and mitigating project risks throughout planning.',
+  29,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'SE4010',
+  'How are requirements gathered, documented, and specified?',
+  3,
+  '[{"text":"What is the difference between functional and non-functional requirements?","upvoteCount":8},
+    {"text":"What is a use case and how is it used in requirements gathering?","upvoteCount":6},
+    {"text":"What is the role of a Software Requirements Specification (SRS) document?","upvoteCount":5}]'::jsonb,
+  'Functional requirements describe what the system does (features, behaviors); non-functional requirements describe how well it does it (performance, security, usability). Use cases capture interactions between actors and the system to elicit functional requirements. The SRS documents all requirements in a structured, verifiable format and serves as the contract between stakeholders and the development team.',
+  19,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'SE4010',
+  'What are the principles of good software design?',
+  4,
+  '[{"text":"What is cohesion and coupling and why do they matter in design?","upvoteCount":8},
+    {"text":"What is the purpose of a software design pattern?","upvoteCount":6},
+    {"text":"What are the key principles of object-oriented design?","upvoteCount":7},
+    {"text":"What is refactoring and when should it be applied?","upvoteCount":5}]'::jsonb,
+  'High cohesion (a module does one thing well) and low coupling (modules are minimally dependent) are hallmarks of maintainable design. Object-oriented design principles include encapsulation, inheritance, polymorphism, and the SOLID principles. Design patterns (e.g., Singleton, Observer, Factory) are reusable solutions to common structural problems. Refactoring improves internal code structure without changing external behavior and should occur continuously to prevent technical debt.',
+  26,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'SE4010',
+  'How is software testing structured and what are the key techniques?',
+  4,
+  '[{"text":"How does unit testing differ from integration testing?","upvoteCount":7},
+    {"text":"What is the difference between black-box and white-box testing?","upvoteCount":8},
+    {"text":"What is the difference between verification and validation?","upvoteCount":6},
+    {"text":"How is software complexity measured using cyclomatic complexity?","upvoteCount":5}]'::jsonb,
+  'Unit testing validates individual components in isolation; integration testing checks that combined components work together. Black-box testing treats the system as opaque and tests inputs/outputs against requirements; white-box testing examines internal logic and code paths. Verification asks "are we building the product right?"; validation asks "are we building the right product?". Cyclomatic complexity counts independent paths through code to quantify testability and risk.',
+  26,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'SE4010',
+  'How are software quality, maintenance, and team collaboration managed?',
+  3,
+  '[{"text":"What metrics are used to evaluate software quality?","upvoteCount":6},
+    {"text":"How is software maintenance categorized (corrective, adaptive, perfective)?","upvoteCount":5},
+    {"text":"How does version control support team-based software development?","upvoteCount":6}]'::jsonb,
+  'Software quality is measured via metrics such as defect density, code coverage, mean time to failure, and maintainability index. Maintenance is categorized as corrective (fixing bugs), adaptive (adjusting to environment changes), and perfective (improving performance or features). Version control systems like Git enable branching, merging, history tracking, and conflict resolution, which are essential for collaborative development.',
+  17,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+);

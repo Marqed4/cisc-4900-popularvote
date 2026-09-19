@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: popularvote-frontend
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+
+# Backend runs on Railway (Flask, not this Render config), see backend/requirements.txt.
+# Kept out of this file since Render only hosts the static frontend build here.

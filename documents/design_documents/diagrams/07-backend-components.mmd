@@ -1,0 +1,67 @@
+classDiagram
+    class app_py {
+        +Flask app
+        +SocketIO socketio
+        +SessionManager session_manager
+        +errorhandler(429)
+        +serve_frontend(path)
+    }
+
+    class SessionManager {
+        +dict sessions
+        +hydrate()
+        +create_session(tags, title, description, encrypted)
+        +get_session(code)
+        +get_session_async(code)
+        +transition_phase(code, phase)
+        +add_submission(code, content)
+        +save_clusters(code, clusters)
+        +promote_curator(code, socketId)
+        +trigger_expansion(code)
+        +upvote_question(code, text, undo)
+    }
+
+    class SessionStore {
+        <<database/session_store.py>>
+        +create_session(...)
+        +get_session(code)
+        +add_submission(session_code, content)
+        +save_clusters(session_code, clusters)
+        +update_curators(code, curators)
+        +increment_expansion_round(code)
+    }
+
+    class ClusteringController {
+        <<managers/clustering_controller.py>>
+        +cluster(submissions, tags)
+        +incremental_cluster(new_subs, existing_clusters, tags)
+        +generate_suggested_answer(cluster, hostNotes, title, description)
+        +generate_followup_suggestions(query, answer, questions)
+        +regenerate_representative_query(...)
+    }
+
+    class WebSocketManager {
+        <<managers/websocket_manager.py>>
+        +register(socketio, session_manager)
+        +on_join_room(data)
+        +on_pubkey_exchange(data)
+        +on_room_key_distribute(data)
+        +to_session(socketio, code, event, data)
+    }
+
+    class RouteBlueprints {
+        <<routes/*.py>>
+        sessions_bp
+        submissions_bp
+        chat_bp
+        expand_bp
+    }
+
+    app_py --> SessionManager : owns
+    app_py --> WebSocketManager : registers
+    app_py --> RouteBlueprints : registers
+    RouteBlueprints --> SessionManager : reads/writes via
+    RouteBlueprints --> ClusteringController : calls for cluster/chat/suggestions
+    RouteBlueprints --> WebSocketManager : broadcasts via to_session()
+    SessionManager --> SessionStore : persists through
+    WebSocketManager --> SessionManager : reads session state

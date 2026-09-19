@@ -1,0 +1,147 @@
+-- ============================================================
+-- CLEANUP
+-- ============================================================
+
+DELETE FROM clusters WHERE session_code = 'W6R2F9';
+DELETE FROM submissions WHERE session_code = 'W6R2F9';
+DELETE FROM sessions WHERE code = 'W6R2F9';
+
+-- ============================================================
+-- INSERT SESSION
+-- ============================================================
+
+INSERT INTO sessions (
+  code, phase, tags, title, description, host_notes,
+  expansion_round, curators, submissions_at_last_cluster
+)
+VALUES (
+  'W6R2F9',
+  'RESULTS',
+  ARRAY['magic','college','winterhold'],
+  'College of Winterhold 2026 Committee',
+  'The study of magic prevails.',
+  'Compiled questions from apprentices, scholars, and visiting mages.',
+  0,
+  '[]',
+  18
+);
+
+-- ============================================================
+-- INSERT SESSION
+-- ============================================================
+
+INSERT INTO sessions (
+  code, phase, tags, title, description, host_notes,
+  expansion_round, curators, submissions_at_last_cluster
+)
+VALUES (
+  'X4T9M2',
+  'RESULTS',
+  ARRAY['magic','college','winterhold'],
+  'College of Winterhold 2026 Committee',
+  'Compiled questions from apprentices, scholars, and visiting mages.',
+  '',
+  0,
+  '[]',
+  18
+);
+
+
+-- ============================================================
+-- INSERT SUBMISSIONS (18 total)
+-- ============================================================
+
+INSERT INTO submissions (id, session_code, content, participant_answer, is_curator)
+VALUES
+  (gen_random_uuid(),'W6R2F9','How dangerous is it to study Destruction magic without a mentor?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','Are there any restrictions on researching Daedric artifacts?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','Why are Frost Atronachs preferred for novice conjurers?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','Can international students from High Rock apply for advanced rune courses?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','What creatures are allowed as familiars within the Hall of Attainment?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','Is it true that tuition can be paid with rare soul gems?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','How often do faculty inspect dormitories for magical contamination?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','Are students permitted to summon Dremora for academic purposes?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','What is the safest method to practice Illusion spells on wildlife?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','Do Alteration specialists receive priority access to the Arcane Archives?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','How does the College handle accidental breaches into Oblivion?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','Are there scholarships for students studying Restoration magic?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','Can students keep magical creatures in their dorm rooms?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','What are the rules for enchanting personal weapons?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','Is forbidden knowledge stored beneath the Hall of the Elements?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','How do faculty evaluate spellcasting proficiency exams?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','Are there penalties for summoning undead on campus grounds?',NULL,false),
+  (gen_random_uuid(),'W6R2F9','What protections exist to prevent magical accidents during lectures?',NULL,false);
+
+-- ============================================================
+-- INSERT CLUSTERS (5 clusters)
+-- ============================================================
+
+INSERT INTO clusters (
+  id, session_code, representative_query, submission_count,
+  questions, answer, upvote_count,
+  previewed_questions, selected_questions, contextual_facts, participant_answers
+)
+VALUES
+
+(
+  gen_random_uuid(),'W6R2F9',
+  'What restrictions exist on researching forbidden or Daedric knowledge?',
+  4,
+  '[{"text":"Are there any restrictions on researching Daedric artifacts?","upvoteCount":5},
+    {"text":"Is forbidden knowledge stored beneath the Hall of the Elements?","upvoteCount":7},
+    {"text":"How does the College handle accidental breaches into Oblivion?","upvoteCount":4},
+    {"text":"Are students permitted to summon Dremora for academic purposes?","upvoteCount":6}]'::jsonb,
+  'The College maintains strict oversight over any research involving Daedric entities or artifacts. Students must obtain written approval from senior faculty before engaging in such studies. Unauthorized summoning or artifact handling is grounds for immediate disciplinary action.',
+  22,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'W6R2F9',
+  'What creatures and summons are permitted within College grounds?',
+  4,
+  '[{"text":"What creatures are allowed as familiars within the Hall of Attainment?","upvoteCount":3},
+    {"text":"Why are Frost Atronachs preferred for novice conjurers?","upvoteCount":2},
+    {"text":"Can students keep magical creatures in their dorm rooms?","upvoteCount":4},
+    {"text":"Are there penalties for summoning undead on campus grounds?","upvoteCount":6}]'::jsonb,
+  'Only non-hostile familiars and controlled atronachs are permitted inside residential halls. Frost Atronachs are recommended for beginners due to their stability and predictable behavior. Undead summons are strictly prohibited except during supervised necromancy research sessions.',
+  15,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'W6R2F9',
+  'How does the College ensure student safety in dormitories and during lectures?',
+  4,
+  '[{"text":"How often do faculty inspect dormitories for magical contamination?","upvoteCount":3},
+    {"text":"What protections exist to prevent magical accidents during lectures?","upvoteCount":5},
+    {"text":"What is the safest method to practice Illusion spells on wildlife?","upvoteCount":2},
+    {"text":"How dangerous is it to study Destruction magic without a mentor?","upvoteCount":5}]'::jsonb,
+  'Dormitories undergo weekly inspections to ensure no lingering magical residue poses a risk to residents. Lecture halls are reinforced with layered wards designed to contain misfires and unstable spellcasting. Students are encouraged to practice Illusion magic only in designated outdoor areas supervised by faculty.',
+  15,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'W6R2F9',
+  'What are the College policies on tuition, scholarships, and international applicants?',
+  4,
+  '[{"text":"Can international students from High Rock apply for advanced rune courses?","upvoteCount":4},
+    {"text":"Is it true that tuition can be paid with rare soul gems?","upvoteCount":6},
+    {"text":"Are there scholarships for students studying Restoration magic?","upvoteCount":3},
+    {"text":"Do Alteration specialists receive priority access to the Arcane Archives?","upvoteCount":2}]'::jsonb,
+  'The College welcomes applicants from all provinces, provided they meet the magical competency requirements. Tuition is traditionally paid in septims, though rare soul gems may be accepted for specific research programs. Scholarships are available for Restoration students due to the high demand for qualified healers across Skyrim.',
+  15,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'W6R2F9',
+  'How does the College evaluate spellcasting proficiency and regulate enchanting?',
+  2,
+  '[{"text":"How do faculty evaluate spellcasting proficiency exams?","upvoteCount":4},
+    {"text":"What are the rules for enchanting personal weapons?","upvoteCount":3}]'::jsonb,
+  'Proficiency exams measure control, precision, and theoretical understanding rather than raw power alone. Enchanting personal weapons is permitted only after completing the mandatory safety certification course offered each semester.',
+  7,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+);

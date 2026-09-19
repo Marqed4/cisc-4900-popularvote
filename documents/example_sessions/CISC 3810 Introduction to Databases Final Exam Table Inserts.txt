@@ -1,0 +1,138 @@
+-- ============================================================
+-- CLEANUP
+-- ============================================================
+
+DELETE FROM clusters WHERE session_code = 'DB3810';
+DELETE FROM submissions WHERE session_code = 'DB3810';
+DELETE FROM user_sessions WHERE session_code = 'DB3810';
+DELETE FROM sessions WHERE code = 'DB3810';
+
+-- ============================================================
+-- INSERT SESSION
+-- ============================================================
+
+INSERT INTO sessions (
+  code, phase, tags, title, description, host_notes,
+  expansion_round, curators, submissions_at_last_cluster
+)
+VALUES (
+  'DB3810',
+  'RESULTS',
+  ARRAY['databases','final-exam','cisc3810','cisc7510','sql','er-diagrams'],
+  'Intro to Databases Final Exam: CISC 3810/7510: Database Systems',
+  'Student questions and clarifications leading up to the Database Systems final exam.',
+  'Session compiled by host f89c171e-b81a-487c-8e89-763033f5988e.',
+  0,
+  '[]',
+  18
+);
+
+-- ============================================================
+-- LINK SESSION TO HOST
+-- ============================================================
+
+INSERT INTO user_sessions (user_id, session_code, role)
+VALUES (
+  'f89c171e-b81a-487c-8e89-763033f5988e',
+  'DB3810',
+  'host'
+);
+
+-- ============================================================
+-- INSERT SUBMISSIONS (18 total)
+-- ============================================================
+
+INSERT INTO submissions (id, session_code, content, participant_answer, is_curator)
+VALUES
+  (gen_random_uuid(),'DB3810','What is the difference between a primary key and a foreign key?',NULL,false),
+  (gen_random_uuid(),'DB3810','How do you convert an ER diagram to a relational schema?',NULL,false),
+  (gen_random_uuid(),'DB3810','What are the four ACID properties and why do they matter?',NULL,false),
+  (gen_random_uuid(),'DB3810','What is the difference between 2NF, 3NF, and BCNF?',NULL,false),
+  (gen_random_uuid(),'DB3810','How does a LEFT JOIN differ from an INNER JOIN?',NULL,false),
+  (gen_random_uuid(),'DB3810','What is a functional dependency and how do you identify one?',NULL,false),
+  (gen_random_uuid(),'DB3810','When should you use a subquery vs. a JOIN?',NULL,false),
+  (gen_random_uuid(),'DB3810','What is the relational algebra equivalent of a SQL SELECT statement?',NULL,false),
+  (gen_random_uuid(),'DB3810','How do transactions handle concurrency with locking protocols?',NULL,false),
+  (gen_random_uuid(),'DB3810','What is the difference between a clustered and non-clustered index?',NULL,false),
+  (gen_random_uuid(),'DB3810','How does hashing differ from B-tree indexing for query performance?',NULL,false),
+  (gen_random_uuid(),'DB3810','What are the steps to decompose a relation into BCNF?',NULL,false),
+  (gen_random_uuid(),'DB3810','How do you handle multi-valued attributes in ER to relational mapping?',NULL,false),
+  (gen_random_uuid(),'DB3810','What is a view and when is it preferable to a base table?',NULL,false),
+  (gen_random_uuid(),'DB3810','What is the difference between optimistic and pessimistic concurrency control?',NULL,false),
+  (gen_random_uuid(),'DB3810','How do triggers differ from stored procedures?',NULL,false),
+  (gen_random_uuid(),'DB3810','What is a deadlock and how can it be detected or prevented?',NULL,false),
+  (gen_random_uuid(),'DB3810','How does query optimization use cost estimation to choose an execution plan?',NULL,false);
+
+-- ============================================================
+-- INSERT CLUSTERS (5 clusters)
+-- ============================================================
+
+INSERT INTO clusters (
+  id, session_code, representative_query, submission_count,
+  questions, answer, upvote_count,
+  previewed_questions, selected_questions, contextual_facts, participant_answers
+)
+VALUES
+
+(
+  gen_random_uuid(),'DB3810',
+  'How do keys, ER diagrams, and schema design work?',
+  4,
+  '[{"text":"What is the difference between a primary key and a foreign key?","upvoteCount":7},
+    {"text":"How do you convert an ER diagram to a relational schema?","upvoteCount":9},
+    {"text":"How do you handle multi-valued attributes in ER to relational mapping?","upvoteCount":6},
+    {"text":"What is a view and when is it preferable to a base table?","upvoteCount":4}]'::jsonb,
+  'A primary key uniquely identifies a tuple within a relation; a foreign key references a primary key in another relation to enforce referential integrity. ER-to-relational mapping converts entity sets to tables, relationships to foreign keys or junction tables, and multi-valued attributes to separate tables with a foreign key back to the parent entity.',
+  26,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'DB3810',
+  'What is normalization and how do you apply 2NF, 3NF, and BCNF?',
+  3,
+  '[{"text":"What is the difference between 2NF, 3NF, and BCNF?","upvoteCount":10},
+    {"text":"What is a functional dependency and how do you identify one?","upvoteCount":8},
+    {"text":"What are the steps to decompose a relation into BCNF?","upvoteCount":7}]'::jsonb,
+  '2NF eliminates partial dependencies on a composite key. 3NF further removes transitive dependencies so every non-key attribute depends only on the key. BCNF is stricter: every determinant must be a superkey. Decomposition into BCNF involves identifying violating functional dependencies, splitting the relation, and verifying lossless-join and dependency preservation properties.',
+  25,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'DB3810',
+  'How do SQL joins, subqueries, and relational algebra relate?',
+  3,
+  '[{"text":"How does a LEFT JOIN differ from an INNER JOIN?","upvoteCount":8},
+    {"text":"When should you use a subquery vs. a JOIN?","upvoteCount":6},
+    {"text":"What is the relational algebra equivalent of a SQL SELECT statement?","upvoteCount":5}]'::jsonb,
+  'An INNER JOIN returns only matching rows from both tables; a LEFT JOIN returns all rows from the left table with NULLs for unmatched right-side columns. Subqueries are cleaner for single-value lookups or existence checks; JOINs are generally more efficient for multi-column retrieval. A SQL SELECT maps to relational algebra as a composition of selection (σ), projection (π), and join (⋈) operators.',
+  19,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'DB3810',
+  'How do transactions, concurrency, and deadlocks work?',
+  4,
+  '[{"text":"What are the four ACID properties and why do they matter?","upvoteCount":9},
+    {"text":"How do transactions handle concurrency with locking protocols?","upvoteCount":7},
+    {"text":"What is the difference between optimistic and pessimistic concurrency control?","upvoteCount":6},
+    {"text":"What is a deadlock and how can it be detected or prevented?","upvoteCount":8}]'::jsonb,
+  'ACID stands for Atomicity, Consistency, Isolation, and Durability, ensuring transactions are all-or-nothing, preserve integrity constraints, remain invisible to other transactions until committed, and survive failures. Two-phase locking (2PL) is the standard pessimistic protocol. Optimistic control assumes low conflict and validates at commit time. Deadlocks are detected via wait-for graphs and resolved by aborting one transaction.',
+  30,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'DB3810',
+  'How do indexing and query optimization improve performance?',
+  4,
+  '[{"text":"What is the difference between a clustered and non-clustered index?","upvoteCount":6},
+    {"text":"How does hashing differ from B-tree indexing for query performance?","upvoteCount":5},
+    {"text":"How does query optimization use cost estimation to choose an execution plan?","upvoteCount":6},
+    {"text":"How do triggers differ from stored procedures?","upvoteCount":3}]'::jsonb,
+  'A clustered index physically orders table data by the index key; only one per table is allowed. Non-clustered indexes store a separate structure with pointers to rows. B-trees support range queries efficiently; hash indexes are faster for exact-match lookups but cannot support ranges. Query optimizers generate candidate execution plans and use statistics-based cost models to select the least expensive one.',
+  20,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+);

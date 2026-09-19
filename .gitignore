@@ -1,6 +1,11 @@
 __pycache__/
 *.pyc
 .venv/
-venv/
 .env
-database/.env
+src/backend/database/.env
+docs/BACKEND_OVERVIEW.docx
+documents/secrets
+
+node_modules/
+dist/
+.vite/

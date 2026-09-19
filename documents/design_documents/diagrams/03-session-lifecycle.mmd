@@ -1,0 +1,14 @@
+stateDiagram-v2
+    [*] --> OPEN : create_session
+    OPEN --> CLOSED : POST /sessions/:code/close
+    OPEN --> EXPANDING : trigger_expansion
+    EXPANDING --> OPEN : expansion round starts accepting submissions again
+    OPEN --> CLUSTERING : POST /sessions/:code/cluster
+    CLOSED --> CLUSTERING : POST /sessions/:code/cluster
+    RESULTS --> CLUSTERING : POST /sessions/:code/cluster (re-cluster)
+    CLUSTERING --> RESULTS : clustering succeeds
+    CLUSTERING --> CLOSED : clustering fails, host may retry
+    RESULTS --> ENDED : POST /sessions/:code/end
+    OPEN --> DELETED : host deletes session
+    DELETED --> [*]
+    ENDED --> [*]

@@ -1,0 +1,25 @@
+sequenceDiagram
+    participant P as Participant client
+    participant H as Host/moderator client
+    participant WS as websocket_manager.py
+    participant API as Flask routes
+    participant DB as Supabase
+
+    P->>WS: pubkey_exchange {publicKey}
+    WS->>H: relay pubkey_exchange {socketId, publicKey}
+    H->>WS: room_key_distribute {targetSocketId, encryptedRoomKey}
+    WS->>P: relay room_key_distribute {encryptedRoomKey}
+    Note over P,H: room key now shared, server never saw plaintext key material
+
+    P->>API: POST /submit {content: ciphertext, nonce}
+    API->>DB: store JSON {ciphertext, nonce} as submissions.content
+    API->>WS: submission:count / submission:new (opaque)
+    WS->>H: broadcast
+
+    H->>H: decrypt + embed + cluster locally (client-side, not in this repo)
+    H->>API: POST /cluster {clusters: [...precomputed...]}
+    API->>DB: save_clusters (same as non-encrypted path)
+    API->>WS: session:results
+    WS->>P: broadcast session:results
+
+    Note over API: POST /chat refuses to run for encrypted sessions,\nwould otherwise send ciphertext to Gemini as plaintext

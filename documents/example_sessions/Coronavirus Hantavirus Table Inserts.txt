@@ -1,0 +1,138 @@
+-- ============================================================
+-- CLEANUP
+-- ============================================================
+
+DELETE FROM clusters WHERE session_code = 'VIR001';
+DELETE FROM submissions WHERE session_code = 'VIR001';
+DELETE FROM user_sessions WHERE session_code = 'VIR001';
+DELETE FROM sessions WHERE code = 'VIR001';
+
+-- ============================================================
+-- INSERT SESSION
+-- ============================================================
+
+INSERT INTO sessions (
+  code, phase, tags, title, description, host_notes,
+  expansion_round, curators, submissions_at_last_cluster
+)
+VALUES (
+  'VIR001',
+  'RESULTS',
+  ARRAY['coronavirus','hantavirus','virology','epidemiology','public-health'],
+  'Coronavirus vs. Hantavirus: Are They Related?',
+  'Public and student questions exploring the biological, epidemiological, and historical connections between coronavirus and hantavirus.',
+  'Session compiled by host f89c171e-b81a-487c-8e89-763033f5988e.',
+  0,
+  '[]',
+  18
+);
+
+-- ============================================================
+-- LINK SESSION TO HOST
+-- ============================================================
+
+INSERT INTO user_sessions (user_id, session_code, role)
+VALUES (
+  'f89c171e-b81a-487c-8e89-763033f5988e',
+  'VIR001',
+  'host'
+);
+
+-- ============================================================
+-- INSERT SUBMISSIONS (18 total)
+-- ============================================================
+
+INSERT INTO submissions (id, session_code, content, participant_answer, is_curator)
+VALUES
+  (gen_random_uuid(),'VIR001','Are coronaviruses and hantaviruses in the same virus family?',NULL,false),
+  (gen_random_uuid(),'VIR001','Do both viruses have RNA genomes?',NULL,false),
+  (gen_random_uuid(),'VIR001','How are the two viruses transmitted differently?',NULL,false),
+  (gen_random_uuid(),'VIR001','Can a person be infected with both viruses at the same time?',NULL,false),
+  (gen_random_uuid(),'VIR001','Did COVID-19 vaccines offer any cross-protection against hantavirus?',NULL,false),
+  (gen_random_uuid(),'VIR001','Which virus has a higher case fatality rate?',NULL,false),
+  (gen_random_uuid(),'VIR001','Are the symptoms of hantavirus and coronavirus similar?',NULL,false),
+  (gen_random_uuid(),'VIR001','What animal reservoirs do each virus come from?',NULL,false),
+  (gen_random_uuid(),'VIR001','Has hantavirus ever caused a pandemic like COVID-19?',NULL,false),
+  (gen_random_uuid(),'VIR001','Can hantavirus spread person-to-person like coronavirus?',NULL,false),
+  (gen_random_uuid(),'VIR001','Are there approved vaccines for hantavirus?',NULL,false),
+  (gen_random_uuid(),'VIR001','How do the incubation periods of the two viruses compare?',NULL,false),
+  (gen_random_uuid(),'VIR001','What organs does each virus primarily attack?',NULL,false),
+  (gen_random_uuid(),'VIR001','Is hantavirus more or less dangerous than SARS-CoV-2?',NULL,false),
+  (gen_random_uuid(),'VIR001','Were there any hantavirus outbreaks during the COVID-19 pandemic?',NULL,false),
+  (gen_random_uuid(),'VIR001','How do scientists classify and differentiate these two virus families?',NULL,false),
+  (gen_random_uuid(),'VIR001','Could a mutation make hantavirus as transmissible as coronavirus?',NULL,false),
+  (gen_random_uuid(),'VIR001','What public health lessons from COVID-19 apply to hantavirus preparedness?',NULL,false);
+
+-- ============================================================
+-- INSERT CLUSTERS (5 clusters)
+-- ============================================================
+
+INSERT INTO clusters (
+  id, session_code, representative_query, submission_count,
+  questions, answer, upvote_count,
+  previewed_questions, selected_questions, contextual_facts, participant_answers
+)
+VALUES
+
+(
+  gen_random_uuid(),'VIR001',
+  'Are coronaviruses and hantaviruses biologically related?',
+  4,
+  '[{"text":"Are coronaviruses and hantaviruses in the same virus family?","upvoteCount":8},
+    {"text":"Do both viruses have RNA genomes?","upvoteCount":5},
+    {"text":"How do scientists classify and differentiate these two virus families?","upvoteCount":6},
+    {"text":"Did COVID-19 vaccines offer any cross-protection against hantavirus?","upvoteCount":4}]'::jsonb,
+  'Coronaviruses (family Coronaviridae) and hantaviruses (family Hantaviridae) are entirely distinct virus families with no close evolutionary relationship. Both carry single-stranded RNA genomes, but their genome structure, replication mechanisms, and host cell entry strategies differ fundamentally. COVID-19 vaccines confer no cross-protection against hantavirus.',
+  23,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'VIR001',
+  'How do transmission and animal reservoirs differ between the two viruses?',
+  4,
+  '[{"text":"How are the two viruses transmitted differently?","upvoteCount":9},
+    {"text":"What animal reservoirs do each virus come from?","upvoteCount":7},
+    {"text":"Can hantavirus spread person-to-person like coronavirus?","upvoteCount":8},
+    {"text":"Can a person be infected with both viruses at the same time?","upvoteCount":3}]'::jsonb,
+  'Coronavirus spreads primarily via respiratory droplets and aerosols between humans. Hantavirus is transmitted through contact with infected rodent urine, droppings, or saliva; person-to-person spread is extremely rare and limited to one strain (Andes virus). Rodents are the primary reservoir for hantavirus; coronaviruses use a broader range of mammalian hosts.',
+  27,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'VIR001',
+  'How do symptoms, severity, and fatality rates compare?',
+  4,
+  '[{"text":"Are the symptoms of hantavirus and coronavirus similar?","upvoteCount":6},
+    {"text":"Which virus has a higher case fatality rate?","upvoteCount":7},
+    {"text":"What organs does each virus primarily attack?","upvoteCount":5},
+    {"text":"Is hantavirus more or less dangerous than SARS-CoV-2?","upvoteCount":6}]'::jsonb,
+  'Both viruses can cause severe respiratory illness, but their pathology differs. Hantavirus Pulmonary Syndrome carries a case fatality rate of roughly 35–40%, far exceeding COVID-19''s overall rate of under 2% in most populations. Hantavirus primarily attacks the lungs and kidneys; SARS-CoV-2 can affect multiple organ systems. Early symptoms of both overlap with flu-like illness.',
+  24,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'VIR001',
+  'What is the pandemic and outbreak history of each virus?',
+  3,
+  '[{"text":"Has hantavirus ever caused a pandemic like COVID-19?","upvoteCount":7},
+    {"text":"Were there any hantavirus outbreaks during the COVID-19 pandemic?","upvoteCount":5},
+    {"text":"How do the incubation periods of the two viruses compare?","upvoteCount":4}]'::jsonb,
+  'Hantavirus has never caused a pandemic. Outbreaks are sporadic, localized, and tied to rodent population surges. Several small hantavirus clusters were reported during the COVID-19 pandemic, but they were unrelated to SARS-CoV-2. Incubation periods also differ: COVID-19 averages 2–14 days while hantavirus can incubate for 1–8 weeks.',
+  16,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+),
+
+(
+  gen_random_uuid(),'VIR001',
+  'What are the vaccine and public health preparedness differences?',
+  3,
+  '[{"text":"Are there approved vaccines for hantavirus?","upvoteCount":6},
+    {"text":"Could a mutation make hantavirus as transmissible as coronavirus?","upvoteCount":5},
+    {"text":"What public health lessons from COVID-19 apply to hantavirus preparedness?","upvoteCount":4}]'::jsonb,
+  'No FDA-approved hantavirus vaccine exists for general use, though candidates are in development. A mutation enabling efficient human-to-human hantavirus transmission is theoretically possible but not currently observed. COVID-19 demonstrated the value of mRNA platform readiness, surveillance infrastructure, and rapid international data sharing, all applicable to future hantavirus preparedness.',
+  15,
+  '[]'::jsonb,'[]'::jsonb,'[]'::jsonb,'[]'::jsonb
+);
