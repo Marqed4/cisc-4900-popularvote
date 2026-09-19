@@ -4,7 +4,7 @@ from flask import Blueprint, request, jsonify, current_app
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
-from managers.websocket_manager import to_session
+from src.backend.managers.websocket_manager import to_session
 
 submissions_bp = Blueprint('submissions', __name__)
 

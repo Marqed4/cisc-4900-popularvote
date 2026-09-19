@@ -1,4 +1,4 @@
-from database.supabase_client import supabase
+from src.backend.database.supabase_client import supabase
 
 def create_session(code, tags=None, title='', description='', encrypted=False):
     tags = tags or []

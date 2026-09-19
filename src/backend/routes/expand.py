@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
-from managers import clustering_controller as clustering_engine
-from managers.websocket_manager import to_session
+from src.backend.managers import clustering_controller as clustering_engine
+from src.backend.managers.websocket_manager import to_session
 
 expand_bp = Blueprint('expand', __name__)
 

@@ -10,12 +10,12 @@ BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / 'database' / '.env')
 load_dotenv(BASE_DIR / '.env')
 
-from managers.session_manager import SessionManager
-from managers import websocket_manager
-from routes.chat import chat_bp
-from routes.expand import expand_bp
-from routes.sessions import sessions_bp
-from routes.submissions import submissions_bp, limiter
+from src.backend.managers.session_manager import SessionManager
+from src.backend.managers import websocket_manager
+from src.backend.routes.chat import chat_bp
+from src.backend.routes.expand import expand_bp
+from src.backend.routes.sessions import sessions_bp
+from src.backend.routes.submissions import submissions_bp, limiter
 
 ALLOWED_ORIGINS = [
     'https://popularvote.marqed.it',
