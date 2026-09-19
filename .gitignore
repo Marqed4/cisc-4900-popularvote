@@ -9,3 +9,5 @@ documents/secrets
 node_modules/
 dist/
 .vite/
+
+src/frontend/src/assets/example_gifs/ignore/
