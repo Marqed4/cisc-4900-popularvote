@@ -1,6 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import { supabase } from "../lib/supabase.js";
+import {
+  generateKeyPair, exportPublicKey, importPublicKey, unwrapRoomKey, encryptText,
+} from "../lib/crypto";
 
 import ParticipantClusterList from "./ParticipantCluster";
 import ParticipantHeader from "./ParticipantHeader";
@@ -39,6 +42,11 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
   const socketRef = useRef(null);
   const socketIdRef = useRef(null);
 
+  // E2E state. Memory only, so a refresh needs the host to send the room key again.
+  const keyPairRef = useRef(null);
+  const roomKeyRef = useRef(null);
+  const encryptedRef = useRef(false);
+
   useEffect(() => {
     fetchSession();
   }, []);
@@ -55,7 +63,19 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       socket.emit("join:room", { code, role: "participant" });
     });
 
-    socket.on("session:sync", ({ clusters: syncClusters, phase: syncPhase }) => {
+    socket.on("session:sync", async ({ clusters: syncClusters, phase: syncPhase, encrypted: syncEncrypted }) => {
+      // E2E: announce our public key so the host can send us the room key.
+      if (syncEncrypted) {
+        encryptedRef.current = true;
+        try {
+          if (!keyPairRef.current) keyPairRef.current = await generateKeyPair();
+          if (!roomKeyRef.current) {
+            socket.emit("pubkey_exchange", { publicKey: await exportPublicKey(keyPairRef.current.publicKey) });
+          }
+        } catch (err) {
+          console.error("[e2e] key announce failed:", err);
+        }
+      }
       if (syncClusters?.length) {
         setClusters(syncClusters);
         setAnswers(prev => {
@@ -69,6 +89,18 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
 
     socket.on("reconnect", () => {
       fetchSession();
+    });
+
+    // E2E: host sent the room key wrapped for us. Unwrap it with the host's public key.
+    socket.on("room_key_distribute", async ({ encryptedRoomKey, publicKey }) => {
+      try {
+        roomKeyRef.current = await unwrapRoomKey(
+          encryptedRoomKey, keyPairRef.current.privateKey, await importPublicKey(publicKey),
+        );
+        setError("");
+      } catch (err) {
+        console.error("[e2e] room key unwrap failed:", err);
+      }
     });
 
     socket.on("submission:count", ({ count }) => setSubmissionCount(count));
@@ -166,10 +198,17 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     setSubmitLoading(true);
     setError("");
     try {
+      // Encrypted sessions: send ciphertext + nonce, never the plaintext.
+      let payload = { content: text };
+      if (encryptedRef.current) {
+        if (!roomKeyRef.current) throw new Error("Waiting for the host to share the encryption key. Try again in a moment.");
+        const { ciphertext, nonce } = await encryptText(roomKeyRef.current, text);
+        payload = { content: ciphertext, nonce };
+      }
       const res = await fetch(`${apiBase}/api/sessions/${code}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -178,7 +217,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
         saveMySubmissions(code, next);
         return next;
       });
-      if (user) {
+      // Don't copy plaintext into Supabase for encrypted sessions.
+      if (user && !encryptedRef.current) {
         const { error: sbError } = await supabase.from("user_submissions").insert({
           user_id: user.id, session_code: code, submission_id: data.id, content: text,
         });

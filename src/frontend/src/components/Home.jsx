@@ -208,9 +208,10 @@ function JoinFlow({ onJoin }) {
 function NewSessionModal({ onStart, onClose }) {
   const [title, setTitle]       = useState('');
   const [description, setDescription] = useState('');
+  const [encrypted, setEncrypted] = useState(false);
 
   function handleStart() {
-    onStart(title.trim(), description.trim());
+    onStart(title.trim(), description.trim(), encrypted);
   }
 
   return (
@@ -237,6 +238,14 @@ function NewSessionModal({ onStart, onClose }) {
           maxLength={500}
           rows={3}
         />
+        <label className="pv-field-label">
+          <input
+            type="checkbox"
+            checked={encrypted}
+            onChange={e => setEncrypted(e.target.checked)}
+          />{' '}
+          End-to-end encrypted <span className="pv-field-optional">(server only sees ciphertext; clustering not available yet)</span>
+        </label>
         <button className="pv-btn-create pv-btn-create--modal" onClick={handleStart}>
           Create session →
         </button>
@@ -306,9 +315,9 @@ export default function Home({ onNavigate, user, onOpenSidebar, onOpenAuth, onSi
       {showNewSession   && (
         <NewSessionModal
           onClose={() => setShowNewSession(false)}
-          onStart={(title, description) => {
+          onStart={(title, description, encrypted) => {
             setShowNewSession(false);
-            onNavigate?.("host", "NEW", { title, description });
+            onNavigate?.("host", "NEW", { title, description, encrypted });
           }}
         />
       )}

@@ -19,7 +19,7 @@ The repository is split into `src/frontend` and `src/backend`:
 
 - **Frontend**: React 19 + Vite, `socket.io-client`, `@supabase/supabase-js`, QR-code session join (`html5-qrcode`/`qrcode`), PDF export (`jspdf`)
 - **Backend**: Python/Flask with `Flask-SocketIO` (`eventlet`) for real-time events, `Flask-Limiter` for rate limiting, `google-genai` for clustering/chat intelligence, `pypdf` for host-notes extraction, served in production via `gunicorn`
-- **Persistence**: PostgreSQL via Supabase, backing sessions, submissions, and clusters — the backend keeps an in-memory cache hydrated from and written through to the database, not the sole source of truth
+- **Persistence**: PostgreSQL via Supabase, backing sessions, submissions, and clusters. The backend keeps an in-memory cache hydrated from and written through to the database, not the sole source of truth
 
 The backend was originally built on Node.js/Express and later ported to Python/Flask to consolidate on a single runtime for AI/PDF tooling and WebSockets. See `documents/design_documents/` for the full design history and decision log.
 

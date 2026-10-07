@@ -1,18 +1,23 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 
+import {
+  generateKeyPair, exportPublicKey, importPublicKey, generateRoomKey,
+  wrapRoomKey, decryptText,
+} from "../lib/crypto";
 import HostHeader from "./HostHeader";
 import HostList from "./HostList";
 import HostSidebar from "./HostSidebar.jsx";
 import ParticipantList from "./ParticipantList";
 import "./HostLayout.css";
 
-export default function HostDashboard({ code: initialCode, initialTitle = '', initialDescription = '', onBack, onSessionCreated, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg }) {
+export default function HostDashboard({ code: initialCode, initialTitle = '', initialDescription = '', initialEncrypted = false, onBack, onSessionCreated, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg }) {
   // Core session state
   const [phase, setPhase] = useState("OPEN");
   const [code, setCode] = useState(initialCode);
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
+  const [encrypted, setEncrypted] = useState(initialEncrypted);
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
   const [participantCount, setParticipantCount] = useState(0);
@@ -41,7 +46,40 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
 
   const socketRef  = useRef(null);
   const createdRef = useRef(false);
+
+  // E2E state. Memory only, so a refresh loses the room key (tracked as E2E-6).
+  const encryptedRef = useRef(initialEncrypted);
+  const hostKeysRef = useRef(null); // promise of { keyPair, publicKey, roomKey }
   const apiBase = import.meta.env.VITE_API_URL ?? "";
+
+  // ====================== E2E helpers ======================
+
+  // Make this host's keypair and the session room key once, on first use.
+  function ensureHostKeys() {
+    if (!hostKeysRef.current) {
+      hostKeysRef.current = (async () => {
+        const keyPair = await generateKeyPair();
+        return {
+          keyPair,
+          publicKey: await exportPublicKey(keyPair.publicKey),
+          roomKey: await generateRoomKey(),
+        };
+      })();
+    }
+    return hostKeysRef.current;
+  }
+
+  // Turn a stored submission ({ciphertext, nonce} JSON) into readable text.
+  async function readSubmission(sub) {
+    if (!encryptedRef.current) return sub;
+    try {
+      const { ciphertext, nonce } = JSON.parse(sub.content);
+      const { roomKey } = await ensureHostKeys();
+      return { ...sub, content: await decryptText(roomKey, ciphertext, nonce) };
+    } catch {
+      return { ...sub, content: "[encrypted: key unavailable]" };
+    }
+  }
 
   // ====================== API & Session Management ======================
   // Defined BEFORE useEffects so closures can reference them safely.
@@ -52,11 +90,13 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       const res = await fetch(`${apiBase}/api/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tags, title: initialTitle, description: initialDescription }),
+        body: JSON.stringify({ tags, title: initialTitle, description: initialDescription, encrypted: initialEncrypted }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
+      encryptedRef.current = !!data.encrypted;
+      setEncrypted(!!data.encrypted);
       setCode(data.code);
       onSessionCreated?.(data.code);
       const mine = JSON.parse(localStorage.getItem("pv-my-sessions") ?? "[]");
@@ -86,7 +126,9 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setTitle(data.title ?? '');
       setDescription(data.description ?? '');
       setHostNotes(data.hostNotes ?? null);
-      setSubmissions(data.submissions ?? []);
+      encryptedRef.current = !!data.encrypted;
+      setEncrypted(!!data.encrypted);
+      setSubmissions(await Promise.all((data.submissions ?? []).map(readSubmission)));
       setSubmissionCount(data.submissionCount ?? 0);
       setSubmissionsAtLastCluster(data.submissionsAtLastCluster ?? 0);
       setParticipantCount(data.participantCount ?? 0);
@@ -147,8 +189,25 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     });
 
     socket.on("submission:count", ({ count }) => setSubmissionCount(count));
-    socket.on("submission:new", ({ id, content }) => {
-      setSubmissions(prev => [...prev, { id, content }]);
+    socket.on("submission:new", async ({ id, content }) => {
+      const sub = await readSubmission({ id, content });
+      setSubmissions(prev => [...prev, sub]);
+    });
+
+    // E2E: a joiner sent its public key. Wrap the room key for them and send it back.
+    socket.on("pubkey_exchange", async ({ socketId, publicKey }) => {
+      if (!encryptedRef.current) return;
+      try {
+        const { keyPair, publicKey: hostPublicKey, roomKey } = await ensureHostKeys();
+        const encryptedRoomKey = await wrapRoomKey(
+          roomKey, keyPair.privateKey, await importPublicKey(publicKey),
+        );
+        socket.emit("room_key_distribute", {
+          targetSocketId: socketId, encryptedRoomKey, publicKey: hostPublicKey,
+        });
+      } catch (err) {
+        console.error("[e2e] key distribution failed:", err);
+      }
     });
 
     socket.on("session:closed", () => setPhase("CLOSED"));
@@ -281,6 +340,10 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   async function triggerClustering() {
     if (submissionCount === 0) {
       setError("No submissions yet.");
+      return;
+    }
+    if (encrypted) {
+      setError("Clustering for encrypted sessions is not available yet (client-side clustering, E2E-4).");
       return;
     }
     setActionLoading(true);

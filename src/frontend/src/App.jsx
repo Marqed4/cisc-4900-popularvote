@@ -180,6 +180,7 @@ export default function App() {
           code={view.code}
           initialTitle={view.title ?? ''}
           initialDescription={view.description ?? ''}
+          initialEncrypted={view.encrypted ?? false}
           user={user}
           onSessionCreated={code => saveSession(code, "host")}
           onBack={() => setView(null)}

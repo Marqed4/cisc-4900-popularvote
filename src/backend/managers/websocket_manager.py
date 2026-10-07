@@ -127,9 +127,12 @@ def register(socketio, session_manager):
             return
 
         # `encryptedRoomKey` is the room key wrapped for the target (ciphertext only).
-        # `fromSocketId` tells the target which public key to unwrap it with.
+        # `publicKey` is the sender's public key, which the target needs to unwrap it
+        # (joiners never see the host's key otherwise, since it is not broadcast).
         socketio.emit('room_key_distribute', {
-            'fromSocketId': sid, 'encryptedRoomKey': data.get('encryptedRoomKey'),
+            'fromSocketId': sid,
+            'encryptedRoomKey': data.get('encryptedRoomKey'),
+            'publicKey': data.get('publicKey'),
         }, to=target_sid)
 
     @socketio.on('leave:room')
