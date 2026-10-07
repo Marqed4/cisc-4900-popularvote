@@ -7,7 +7,8 @@ services:
         VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
     env_file:
       - src/backend/.env
-    # Host port 6967 matches the localhost origin allowed in src/backend/app.py (CORS + Socket.IO)
+    # Host port 6967 has to match the localhost origin allowed in src/backend/app.py
+    # (CORS and Socket.IO), otherwise the browser blocks the requests.
     ports:
       - "6967:2167"
     restart: unless-stopped

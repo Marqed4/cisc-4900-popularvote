@@ -47,14 +47,14 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   const socketRef  = useRef(null);
   const createdRef = useRef(false);
 
-  // E2E state. Memory only, so a refresh loses the room key (tracked as E2E-6).
+  // E2E state. Memory only for now, so a refresh loses the room key (E2E-6).
   const encryptedRef = useRef(initialEncrypted);
   const hostKeysRef = useRef(null); // promise of { keyPair, publicKey, roomKey }
   const apiBase = import.meta.env.VITE_API_URL ?? "";
 
   // ====================== E2E helpers ======================
 
-  // Make this host's keypair and the session room key once, on first use.
+  // Makes the host's keypair and the room key the first time they're needed.
   function ensureHostKeys() {
     if (!hostKeysRef.current) {
       hostKeysRef.current = (async () => {
@@ -69,7 +69,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     return hostKeysRef.current;
   }
 
-  // Turn a stored submission ({ciphertext, nonce} JSON) into readable text.
+  // Turns a stored submission ({ciphertext, nonce} JSON) back into readable text.
   async function readSubmission(sub) {
     if (!encryptedRef.current) return sub;
     try {
@@ -194,7 +194,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setSubmissions(prev => [...prev, sub]);
     });
 
-    // E2E: a joiner sent its public key. Wrap the room key for them and send it back.
+    // E2E: a joiner sent us their public key, so wrap the room key for them and send it back.
     socket.on("pubkey_exchange", async ({ socketId, publicKey }) => {
       if (!encryptedRef.current) return;
       try {

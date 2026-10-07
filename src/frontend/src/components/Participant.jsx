@@ -42,7 +42,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
   const socketRef = useRef(null);
   const socketIdRef = useRef(null);
 
-  // E2E state. Memory only, so a refresh needs the host to send the room key again.
+  // E2E state. Memory only for now, so a refresh means the host has to resend the room key.
   const keyPairRef = useRef(null);
   const roomKeyRef = useRef(null);
   const encryptedRef = useRef(false);
@@ -64,7 +64,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     });
 
     socket.on("session:sync", async ({ clusters: syncClusters, phase: syncPhase, encrypted: syncEncrypted }) => {
-      // E2E: announce our public key so the host can send us the room key.
+      // E2E: send our public key so the host can hand us the room key.
       if (syncEncrypted) {
         encryptedRef.current = true;
         try {
@@ -91,7 +91,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       fetchSession();
     });
 
-    // E2E: host sent the room key wrapped for us. Unwrap it with the host's public key.
+    // E2E: the host sent the room key wrapped for us, so unwrap it with their public key.
     socket.on("room_key_distribute", async ({ encryptedRoomKey, publicKey }) => {
       try {
         roomKeyRef.current = await unwrapRoomKey(
@@ -198,7 +198,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     setSubmitLoading(true);
     setError("");
     try {
-      // Encrypted sessions: send ciphertext + nonce, never the plaintext.
+      // Encrypted sessions send ciphertext plus nonce, never the plaintext.
       let payload = { content: text };
       if (encryptedRef.current) {
         if (!roomKeyRef.current) throw new Error("Waiting for the host to share the encryption key. Try again in a moment.");
@@ -217,7 +217,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
         saveMySubmissions(code, next);
         return next;
       });
-      // Don't copy plaintext into Supabase for encrypted sessions.
+      // Skip the Supabase copy for encrypted sessions so plaintext never lands there.
       if (user && !encryptedRef.current) {
         const { error: sbError } = await supabase.from("user_submissions").insert({
           user_id: user.id, session_code: code, submission_id: data.id, content: text,

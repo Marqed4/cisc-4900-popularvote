@@ -33,7 +33,7 @@ production.
 
 **Supabase persistence over in-memory-only state**
 Decision: `sessions`, `submissions`, and `clusters` are Postgres tables (see
-`PostgreSQL Tables.txt`), read through `database/session_store.py`. `SessionManager` keeps an
+`PostgreSQL Schema.sql`), read through `database/session_store.py`. `SessionManager` keeps an
 in-memory dict (`self.sessions`) as a cache, hydrated on boot via `hydrate()` and lazily via
 `get_session_async()` for codes not yet cached.
 Reason: NFR5 (no retention after a session ends) is now enforced by explicit deletion
@@ -96,7 +96,13 @@ flowchart LR
     WSM -- "broadcast to room (session code)" --> Socket
 ```
 
-### 2. Data model (matches `PostgreSQL Tables.txt`)
+### 2. Data model (matches `PostgreSQL Schema.sql`)
+
+Screenshot of the live v4900 schema from the Supabase table editor:
+
+![Supabase schema for v4900](diagrams/08-supabase-schema.png)
+
+The Mermaid version below shows the same tables.
 
 ```mermaid
 erDiagram
