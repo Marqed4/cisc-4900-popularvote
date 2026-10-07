@@ -1,0 +1,13 @@
+services:
+  popularvote:
+    build:
+      context: .
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY}
+    env_file:
+      - src/backend/.env
+    # Host port 6967 matches the localhost origin allowed in src/backend/app.py (CORS + Socket.IO)
+    ports:
+      - "6967:2167"
+    restart: unless-stopped

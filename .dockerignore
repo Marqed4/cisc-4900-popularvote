@@ -1,0 +1,9 @@
+.git
+**/node_modules
+**/dist
+**/__pycache__
+**/*.pyc
+**/.env
+.venv
+documents
+src/frontend/src/assets/example_gifs

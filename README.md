@@ -33,5 +33,14 @@ The frontend deploys as a static build on Render's free tier. The backend runs s
 4. Install backend dependencies from `src/backend/requirements.txt` and frontend dependencies via `npm install` in `src/frontend`.
 5. Run the backend (`app.py`) and frontend (`npm run dev`) dev servers.
 
+### Running with Docker
+A multi-stage `Dockerfile` builds the Vite frontend and serves it from the Flask backend in one container.
+
+1. Fill in `src/backend/.env` as above.
+2. Put `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in a `.env` at the repo root. Compose passes them to the frontend build.
+3. Run `docker compose up --build` and open `http://localhost:6967`.
+
+Host port `6967` maps to container port `2167` because the CORS and Socket.IO allowlist in `src/backend/app.py` only permits `http://localhost:6967`. Keep the backend at one worker, since `SessionManager` holds session state in memory.
+
 ## Community
 The project welcomes contributions and maintains a contribution guide. It operates under GPLv3 licensing with comprehensive legal documentation available under `documents/legal/` and `documents/licenses/`.
