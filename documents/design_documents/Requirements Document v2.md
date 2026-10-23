@@ -328,3 +328,7 @@ Background reading relevant to finishing the backend and the E2E encryption plan
 - OWASP Cryptographic Storage Cheat Sheet (general guardrails relevant to CON6/CON7, key handling
   and the lack of identity verification in the current key exchange):
   https://cheatsheetseries.owasp.org/cheatsheets/Cryptographic_Storage_Cheat_Sheet.html
+
+## Attribute
+
+Organized with the assistance of Qwen 3.8 Max.

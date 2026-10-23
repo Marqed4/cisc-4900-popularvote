@@ -223,3 +223,7 @@ sequenceDiagram
   which is not part of this codebase.
 - Key-exchange trust model (no identity verification against an active MITM) and room-key durability
   across moderator reconnects are still open design questions, not yet resolved in code.
+
+## Attribute
+
+Organized with the assistance of Qwen 3.8 Max.

@@ -102,3 +102,7 @@ Current result: **46 passed, 0 failed.**
   reflection: "Would plan the storage contract and the clustering approach together next time - writing the backend route's expected payload shape before the client-side algorithm existed meant working backward from it instead of designing both together.",
 }
 ```
+
+## Attribute
+
+Organized with the assistance of Qwen 3.8 Max.

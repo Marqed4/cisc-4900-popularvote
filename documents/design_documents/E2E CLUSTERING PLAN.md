@@ -81,3 +81,7 @@ Threat model: protect question/message content from DB leaks, breaches, and serv
 - [ ] Opt-in per-session vs. global encryption
 - [ ] TF-IDF (lighter) vs. local embedding model (better clustering, bigger download) for Phase 3
 - [ ] Whether to self-host model files on Render or rely on the HF CDN
+
+## Attribute
+
+Organized with the assistance of Qwen 3.8 Max.
