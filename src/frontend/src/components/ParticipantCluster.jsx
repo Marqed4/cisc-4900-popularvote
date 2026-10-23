@@ -3,8 +3,12 @@ import "./ParticipantCluster.css";
 
 const MAX_CHARS = 500;
 
-function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUpvote, onSubmitToCluster }) {
+function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUpvote, onSubmitToCluster, isCurator, onSaveAnswer }) {
   const [expanded, setExpanded] = useState(false);
+  // curator answer editor
+  const [editingAnswer, setEditingAnswer] = useState(false);
+  const [answerDraft, setAnswerDraft] = useState("");
+  const [answerSaving, setAnswerSaving] = useState(false);
   const [addingQuestion, setAddingQuestion] = useState(false);
   const [clusterInput, setClusterInput] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -24,6 +28,15 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
     setClusterInput("");
     setAddingQuestion(false);
     setSubmitLoading(false);
+  }
+
+  async function handleAnswerSave() {
+    const trimmed = answerDraft.trim();
+    if (!trimmed) return;
+    setAnswerSaving(true);
+    const ok = await onSaveAnswer(cluster.id, trimmed);
+    setAnswerSaving(false);
+    if (ok) setEditingAnswer(false);
   }
 
   async function handleChipClick(q) {
@@ -47,11 +60,45 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
 
       <div className="pd-cluster-query">{cluster.representative_query}</div>
 
-      {answer && (
+      {answer && !editingAnswer && (
         <div className="pd-cluster-answer">
           <span className="pd-answer-label">Host response</span>
           <p className="pd-answer-text">{answer}</p>
         </div>
+      )}
+
+      {isCurator && !isEnded && (
+        editingAnswer ? (
+          <div className="pd-cluster-input-area">
+            <textarea
+              className="pd-textarea pd-textarea--sm"
+              placeholder="Write an answer for this cluster…"
+              value={answerDraft}
+              onChange={e => setAnswerDraft(e.target.value)}
+              rows={4}
+              disabled={answerSaving}
+            />
+            <div className="pd-textarea-footer">
+              <span />
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button className="pd-btn-ghost" onClick={() => setEditingAnswer(false)} disabled={answerSaving}>
+                  Cancel
+                </button>
+                <button
+                  className="pd-btn-primary"
+                  onClick={handleAnswerSave}
+                  disabled={!answerDraft.trim() || answerSaving}
+                >
+                  {answerSaving ? "Saving…" : "Save answer"}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <button className="pd-add-q-btn" onClick={() => { setAnswerDraft(answer ?? ""); setEditingAnswer(true); }}>
+            {answer ? "Edit answer" : "Answer this cluster"}
+          </button>
+        )
       )}
 
       {answer && followups?.length > 0 && !isEnded && (
@@ -167,6 +214,8 @@ export default function ParticipantClusterList({
   followups,
   onUpvote,
   onSubmitToCluster,
+  isCurator = false,
+  onSaveAnswer,
 }) {
   if (!clusters.length) {
     return (
@@ -199,6 +248,8 @@ export default function ParticipantClusterList({
           phase={phase}
           onUpvote={onUpvote}
           onSubmitToCluster={onSubmitToCluster}
+          isCurator={isCurator}
+          onSaveAnswer={onSaveAnswer}
         />
       ))}
     </div>

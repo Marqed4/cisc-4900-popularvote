@@ -13,10 +13,10 @@ def create_session(code, tags=None, title='', description='', encrypted=False):
             print(f'[createSession] context write skipped: {e}')
 
     if encrypted:
-        try:
-            supabase.table('sessions').update({'encrypted': True}).eq('code', code).execute()
-        except Exception as e:
-            print(f'[createSession] encrypted flag write skipped (schema cache may be stale): {e}')
+        # Not swallowed: a failed write here means the session is stored as unencrypted
+        # while the client believes it's E2E-encrypted, so session_manager.create_session
+        # must see this and surface it rather than let the two silently diverge.
+        supabase.table('sessions').update({'encrypted': True}).eq('code', code).execute()
 
     return result.data
 

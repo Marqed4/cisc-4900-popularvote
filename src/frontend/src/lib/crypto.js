@@ -18,7 +18,8 @@
 //
 // known gaps (kanban track, not fix here):
 //   - pubkey not authenticated - bad server could MITM key exchange (E2E-7)
-//   - room key live in memory only - refresh page, lose it (E2E-6)
+//   - room key kept in localStorage per session so refresh/restart no lose it (E2E-6).
+//     anyone with this browser profile (or an XSS) can read it - device = trust boundary
 //   - one room key whole session, no forward secrecy
 //   - no padding - ciphertext length leak roughly how long question was
 //   - server still see metadata: who connect, when, how many submission
@@ -69,6 +70,30 @@ export function importPublicKey(b64) {
 // step 1, host only: one random AES-256-GCM key, whole session
 export function generateRoomKey() {
   return subtle.generateKey({ name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+}
+
+// room key persist, one entry per session code. raw key as base64.
+// storage can be blocked (private mode etc) - then just fall back to memory only.
+function roomKeyStorageKey(code) { return `pv-room-key-${code}`; }
+
+export async function saveRoomKey(code, roomKey) {
+  if (!code || code === "NEW") return;
+  try {
+    localStorage.setItem(roomKeyStorageKey(code), toBase64(await subtle.exportKey("raw", roomKey)));
+  } catch (err) {
+    console.error("[e2e] room key save failed:", err);
+  }
+}
+
+export async function loadRoomKey(code) {
+  if (!code || code === "NEW") return null;
+  try {
+    const b64 = localStorage.getItem(roomKeyStorageKey(code));
+    if (!b64) return null;
+    return await subtle.importKey("raw", fromBase64(b64), { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]);
+  } catch {
+    return null;
+  }
 }
 
 // ECDH -> HKDF -> AES-GCM key. only job this key got: wrap room key, nothing else.

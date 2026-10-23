@@ -1,21 +1,9 @@
-// import Barn from './Barn.gif'
-// import FallForest from './Fall Forest.gif'
-// import Silos from './Silos.gif'
-// import SpringForest from './Spring Forest.gif'
-// import WinterForest from './Winter Forest.gif'
-import SummerForest from './Summer Forest.gif'
-import LakeSide from './Lake Side.gif'
-import Peace from './Peace.gif'
-import AustianDance from './Austrian Dance.gif'
-import Lighthouse from './Lighthouse.gif'
-import Bridge from './Bridge.gif'
+import Sandstone from './day_Sandstone.jpg'
+import PaleStone from './day_PaleStone.jpg'
+import PlasterWall from './night_PlasterWall.jpg'
 
 export const DefaultBackgrounds = {
-  day_SummerForest: SummerForest,
-  day_LakeSide: LakeSide,
-  day_Peace: Peace,
-  night_AustianDance: AustianDance,
-  night_Lighthouse: Lighthouse,
-  night_AustianDance: AustianDance,
-  night_Bridge: Bridge,
+  day_Sandstone: Sandstone,
+  day_PaleStone: PaleStone,
+  night_PlasterWall: PlasterWall,
 }

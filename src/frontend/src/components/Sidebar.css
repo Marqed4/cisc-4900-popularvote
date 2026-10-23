@@ -200,6 +200,24 @@
   border-top: 1px solid var(--border, #e5e4e1);
 }
 
+.sb-clear-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-size: 0.68rem;
+  color: var(--text-2, #57534e);
+  cursor: pointer;
+  user-select: none;
+}
+
+.sb-clear-row input {
+  margin: 0;
+  accent-color: var(--text-2, #57534e);
+  cursor: pointer;
+}
+
 .sb-signin-btn {
   width: 100%;
   padding: 0.55rem 1rem;

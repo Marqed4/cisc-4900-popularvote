@@ -9,6 +9,7 @@ export default defineConfig({
   ],
   server: {
     port: 6967,
+    open: true,
     proxy: {
       '/api': 'http://localhost:2167',
       '/socket.io': {

@@ -1,0 +1,11 @@
+{
+  "name": "popularvote",
+  "private": true,
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "dev:frontend": "npm run dev --prefix src/frontend",
+    "build": "npm run build --prefix src/frontend",
+    "lint": "npm run lint --prefix src/frontend",
+    "preview": "npm run preview --prefix src/frontend"
+  }
+}

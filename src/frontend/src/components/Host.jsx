@@ -3,8 +3,9 @@ import { io } from "socket.io-client";
 
 import {
   generateKeyPair, exportPublicKey, importPublicKey, generateRoomKey,
-  wrapRoomKey, decryptText,
+  wrapRoomKey, encryptText, decryptText, saveRoomKey, loadRoomKey,
 } from "../lib/crypto";
+import { clusterQuestions } from "../lib/clustering";
 import HostHeader from "./HostHeader";
 import HostList from "./HostList";
 import HostSidebar from "./HostSidebar.jsx";
@@ -47,22 +48,30 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   const socketRef  = useRef(null);
   const createdRef = useRef(false);
 
-  // E2E state. Memory only for now, so a refresh loses the room key (E2E-6).
+  // E2E state. The room key is also saved in localStorage per session code so a
+  // refresh or server restart doesn't make old submissions unreadable (E2E-6).
+  const codeRef = useRef(initialCode);
   const encryptedRef = useRef(initialEncrypted);
   const hostKeysRef = useRef(null); // promise of { keyPair, publicKey, roomKey }
   const apiBase = import.meta.env.VITE_API_URL ?? "";
 
   // ====================== E2E helpers ======================
 
-  // Makes the host's keypair and the room key the first time they're needed.
+  // Makes the host's keypair the first time it's needed. The room key is reused from
+  // localStorage when this browser already has one for the session, otherwise generated.
   function ensureHostKeys() {
     if (!hostKeysRef.current) {
       hostKeysRef.current = (async () => {
         const keyPair = await generateKeyPair();
+        let roomKey = await loadRoomKey(codeRef.current);
+        if (!roomKey) {
+          roomKey = await generateRoomKey();
+          await saveRoomKey(codeRef.current, roomKey);
+        }
         return {
           keyPair,
           publicKey: await exportPublicKey(keyPair.publicKey),
-          roomKey: await generateRoomKey(),
+          roomKey,
         };
       })();
     }
@@ -81,6 +90,47 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }
 
+  // Same idea, one string field at a time (cluster representative_query / question text).
+  async function decryptField(value) {
+    if (!encryptedRef.current) return value;
+    try {
+      const { ciphertext, nonce } = JSON.parse(value);
+      const { roomKey } = await ensureHostKeys();
+      return await decryptText(roomKey, ciphertext, nonce);
+    } catch {
+      return "[encrypted: key unavailable]";
+    }
+  }
+
+  async function encryptField(value) {
+    const { roomKey } = await ensureHostKeys();
+    const { ciphertext, nonce } = await encryptText(roomKey, value);
+    return JSON.stringify({ ciphertext, nonce });
+  }
+
+  // Clusters round-trip the same way submissions do: stored/sent as ciphertext blobs,
+  // decrypted here only for display. Keeps the server blind to cluster content too.
+  async function readCluster(cluster) {
+    if (!encryptedRef.current) return cluster;
+    return {
+      ...cluster,
+      representative_query: await decryptField(cluster.representative_query),
+      questions: await Promise.all(
+        (cluster.questions ?? []).map(async q => ({ ...q, text: await decryptField(q.text) }))
+      ),
+    };
+  }
+
+  async function encryptCluster(cluster) {
+    return {
+      representativeQuery: await encryptField(cluster.representativeQuery),
+      submissionCount: cluster.submissionCount,
+      questions: await Promise.all(
+        cluster.questions.map(async q => ({ ...q, text: await encryptField(q.text) }))
+      ),
+    };
+  }
+
   // ====================== API & Session Management ======================
   // Defined BEFORE useEffects so closures can reference them safely.
 
@@ -97,7 +147,12 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
 
       encryptedRef.current = !!data.encrypted;
       setEncrypted(!!data.encrypted);
+      codeRef.current = data.code;
       setCode(data.code);
+      if (data.encrypted) {
+        const { roomKey } = await ensureHostKeys();
+        await saveRoomKey(data.code, roomKey);
+      }
       onSessionCreated?.(data.code);
       const mine = JSON.parse(localStorage.getItem("pv-my-sessions") ?? "[]");
       if (!mine.includes(data.code)) localStorage.setItem("pv-my-sessions", JSON.stringify([data.code, ...mine]));
@@ -132,7 +187,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setSubmissionCount(data.submissionCount ?? 0);
       setSubmissionsAtLastCluster(data.submissionsAtLastCluster ?? 0);
       setParticipantCount(data.participantCount ?? 0);
-      setClusters(data.clusters ?? []);
+      setClusters(await Promise.all((data.clusters ?? []).map(readCluster)));
       setCurators(data.curators ?? []);
 
       const savedAnswers = {};
@@ -212,8 +267,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
 
     socket.on("session:closed", () => setPhase("CLOSED"));
     socket.on("session:clustering", () => setPhase("CLUSTERING"));
-    socket.on("session:results", ({ clusters, submissionsAtLastCluster }) => {
-      setClusters(clusters);
+    socket.on("session:results", async ({ clusters, submissionsAtLastCluster }) => {
+      setClusters(await Promise.all((clusters ?? []).map(readCluster)));
       if (submissionsAtLastCluster !== undefined) setSubmissionsAtLastCluster(submissionsAtLastCluster);
       setPhase("RESULTS");
     });
@@ -265,7 +320,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setParticipants(prev => prev.filter(p => p.socketId !== socketId));
     });
 
-    socket.on("curator:updated", ({ curators: newCurators }) => {
+    socket.on("curator:promoted", ({ curators: newCurators }) => {
       setCurators(newCurators);
       setParticipants(prev =>
         prev.map(p => ({ ...p, isCurator: newCurators.includes(p.socketId) }))
@@ -286,15 +341,16 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setPhase("RESULTS");
     });
 
-    socket.on("cluster:submission:added", ({ clusterId, question, submissionCount }) => {
+    socket.on("cluster:submission:added", async ({ clusterId, question, submissionCount }) => {
       console.log("[cluster:submission:added]", { clusterId, question, submissionCount });
+      const decryptedQuestion = { ...question, text: await decryptField(question.text) };
       setClusters(prev =>
         prev.map(c => {
           if (String(c.id) !== String(clusterId)) return c;
           return {
             ...c,
             submission_count: submissionCount,
-            questions: [...(c.questions ?? []), question],
+            questions: [...(c.questions ?? []), decryptedQuestion],
           };
         })
       );
@@ -342,15 +398,32 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setError("No submissions yet.");
       return;
     }
-    if (encrypted) {
-      setError("Clustering for encrypted sessions is not available yet (client-side clustering, E2E-4).");
-      return;
-    }
     setActionLoading(true);
     setError("");
     setPhase("CLUSTERING");
 
     try {
+      if (encrypted) {
+        // The server never sees these questions in plaintext, so Gemini can't cluster
+        // them - group them here instead, using the copies we already decrypted for
+        // display, then re-encrypt the result before it leaves the browser (E2E-4).
+        const plainClusters = clusterQuestions(submissions.map(s => ({ id: s.id, content: s.content })));
+        if (plainClusters.length === 0) throw new Error("No submissions to cluster.");
+        const encryptedClusters = await Promise.all(plainClusters.map(encryptCluster));
+
+        const res = await fetch(`${apiBase}/api/sessions/${code}/cluster`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ clusters: encryptedClusters }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+
+        setClusters(await Promise.all((data.clusters ?? []).map(readCluster)));
+        setPhase("RESULTS");
+        return;
+      }
+
       const res = await fetch(`${apiBase}/api/sessions/${code}/cluster`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -376,10 +449,16 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
 
   async function submitManualQuestion(clusterId, question) {
     try {
+      let payload = { content: question };
+      if (encrypted) {
+        const { roomKey } = await ensureHostKeys();
+        const { ciphertext, nonce } = await encryptText(roomKey, question);
+        payload = { content: ciphertext, nonce };
+      }
       await fetch(`${apiBase}/api/sessions/${code}/clusters/${clusterId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: question }),
+        body: JSON.stringify(payload),
       });
       setManualQuestions(prev => ({ ...prev, [clusterId]: "" }));
     } catch {

@@ -9,6 +9,7 @@ import { supabase } from './lib/supabase.js';
 import './App.css';
 
 const BG_STORAGE_KEY = "pv-background";
+const CLEAR_ON_EXIT_KEY = "pv-clear-on-exit";
 
 const MY_SESSIONS_KEY = "pv-my-sessions";
 const JOINED_KEY      = "pv-joined-sessions";
@@ -62,11 +63,31 @@ export default function App() {
   const [showAuth, setShowAuth]       = useState(false);
 
   // Global theme + background, available across all pages
-  const [bgKey,    setBgKey]    = useState(() => localStorage.getItem(BG_STORAGE_KEY) ?? "day_SummerForest");
+  const [bgKey,    setBgKey]    = useState(() => localStorage.getItem(BG_STORAGE_KEY) ?? "day_Sandstone");
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("pv-dark") === "true");
+
+  const [clearOnExit, setClearOnExit] = useState(() => localStorage.getItem(CLEAR_ON_EXIT_KEY) === "true");
 
   // Clean up removed feature keys so old localStorage values don't linger
   useEffect(() => { localStorage.removeItem("pv-glass"); localStorage.removeItem("pv-sound"); }, []);
+
+  // Opt-in privacy setting: wipe everything this site saved (history, theme, encryption
+  // room keys, sign-in) when the page is closed. pagehide also fires on refresh, so a
+  // refresh clears it too. Only the setting itself is kept so it stays on.
+  useEffect(() => {
+    localStorage.setItem(CLEAR_ON_EXIT_KEY, String(clearOnExit));
+    if (!clearOnExit) return;
+    function flush() {
+      try {
+        localStorage.clear();
+        localStorage.setItem(CLEAR_ON_EXIT_KEY, "true");
+      } catch {
+        // storage blocked (private mode etc), nothing to clear
+      }
+    }
+    window.addEventListener("pagehide", flush);
+    return () => window.removeEventListener("pagehide", flush);
+  }, [clearOnExit]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
@@ -83,7 +104,7 @@ export default function App() {
 
   function handleSelectBg(key) { setBgKey(key); localStorage.setItem(BG_STORAGE_KEY, key); }
 
-  const bgSrc = DefaultBackgrounds[bgKey] ?? DefaultBackgrounds.day_SummerForest;
+  const bgSrc = DefaultBackgrounds[bgKey] ?? DefaultBackgrounds.day_Sandstone;
 
   // Apply background directly to <html>, most reliable across mobile browsers.
   // position:fixed divs break on iOS Safari during scroll.
@@ -170,6 +191,8 @@ export default function App() {
       onSignIn={() => { setSidebarOpen(false); setShowAuth(true); }}
       onSignOut={handleSignOut}
       onNavigate={(role, code) => { setSidebarOpen(false); handleNavigate(role, code); }}
+      clearOnExit={clearOnExit}
+      onToggleClearOnExit={() => setClearOnExit(v => !v)}
     />
   );
 

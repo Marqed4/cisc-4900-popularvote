@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import { supabase } from "../lib/supabase.js";
 import {
-  generateKeyPair, exportPublicKey, importPublicKey, unwrapRoomKey, encryptText,
+  generateKeyPair, exportPublicKey, importPublicKey, unwrapRoomKey, encryptText, decryptText,
+  saveRoomKey, loadRoomKey,
 } from "../lib/crypto";
 
 import ParticipantClusterList from "./ParticipantCluster";
@@ -24,6 +25,25 @@ function saveMySubmissions(code, submissions) {
   localStorage.setItem(mySubsKey(code), JSON.stringify(submissions));
 }
 
+// Shared by Host.jsx's own copy: cluster representative_query/question text round-trip
+// as ciphertext+nonce JSON blobs for encrypted sessions, same convention as submissions.
+async function decryptClusters(clusters, encrypted, roomKey) {
+  if (!encrypted) return clusters ?? [];
+  const decryptField = async value => {
+    try {
+      const { ciphertext, nonce } = JSON.parse(value);
+      return await decryptText(roomKey, ciphertext, nonce);
+    } catch {
+      return "[encrypted: key unavailable]";
+    }
+  };
+  return Promise.all((clusters ?? []).map(async c => ({
+    ...c,
+    representative_query: await decryptField(c.representative_query),
+    questions: await Promise.all((c.questions ?? []).map(async q => ({ ...q, text: await decryptField(q.text) }))),
+  })));
+}
+
 export default function Participant({ code, onBack, user, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg }) {
   const [phase, setPhase] = useState("OPEN");
   const [title, setTitle] = useState('');
@@ -38,17 +58,23 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
   const [error, setError] = useState("");
   const [submitLoading, setSubmitLoading] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Curators are tracked by socket id, so this is recomputed whenever the list changes.
+  const [isCurator, setIsCurator] = useState(false);
 
   const socketRef = useRef(null);
   const socketIdRef = useRef(null);
 
-  // E2E state. Memory only for now, so a refresh means the host has to resend the room key.
+  // E2E state. The room key is saved in localStorage per session code, so a refresh
+  // doesn't need the host online to resend it.
   const keyPairRef = useRef(null);
   const roomKeyRef = useRef(null);
   const encryptedRef = useRef(false);
 
   useEffect(() => {
-    fetchSession();
+    (async () => {
+      roomKeyRef.current = await loadRoomKey(code);
+      fetchSession();
+    })();
   }, []);
 
   useEffect(() => {
@@ -63,7 +89,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       socket.emit("join:room", { code, role: "participant" });
     });
 
-    socket.on("session:sync", async ({ clusters: syncClusters, phase: syncPhase, encrypted: syncEncrypted }) => {
+    socket.on("session:sync", async ({ clusters: syncClusters, phase: syncPhase, encrypted: syncEncrypted, curators: syncCurators }) => {
+      setIsCurator((syncCurators ?? []).includes(socket.id));
       // E2E: send our public key so the host can hand us the room key.
       if (syncEncrypted) {
         encryptedRef.current = true;
@@ -77,10 +104,11 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
         }
       }
       if (syncClusters?.length) {
-        setClusters(syncClusters);
+        const decrypted = await decryptClusters(syncClusters, syncEncrypted, roomKeyRef.current);
+        setClusters(decrypted);
         setAnswers(prev => {
           const next = { ...prev };
-          syncClusters.forEach(c => { if (c.answer) next[String(c.id)] = c.answer; });
+          decrypted.forEach(c => { if (c.answer) next[String(c.id)] = c.answer; });
           return next;
         });
       }
@@ -97,7 +125,10 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
         roomKeyRef.current = await unwrapRoomKey(
           encryptedRoomKey, keyPairRef.current.privateKey, await importPublicKey(publicKey),
         );
+        await saveRoomKey(code, roomKeyRef.current);
         setError("");
+        // Anything rendered before the key arrived shows "key unavailable", so reload it.
+        fetchSession();
       } catch (err) {
         console.error("[e2e] room key unwrap failed:", err);
       }
@@ -106,11 +137,12 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     socket.on("submission:count", ({ count }) => setSubmissionCount(count));
     socket.on("session:closed",    () => setPhase("CLOSED"));
     socket.on("session:clustering",() => setPhase("CLUSTERING"));
-    socket.on("session:results",   ({ clusters }) => {
-      setClusters(clusters);
+    socket.on("session:results",   async ({ clusters }) => {
+      const decrypted = await decryptClusters(clusters, encryptedRef.current, roomKeyRef.current);
+      setClusters(decrypted);
       setAnswers(prev => {
         const next = { ...prev };
-        (clusters ?? []).forEach(c => { if (c.answer) next[String(c.id)] = c.answer; });
+        decrypted.forEach(c => { if (c.answer) next[String(c.id)] = c.answer; });
         return next;
       });
       setPhase("RESULTS");
@@ -127,6 +159,9 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     socket.on("cluster:answered", ({ clusterId, answer }) =>
       setAnswers(prev => ({ ...prev, [String(clusterId)]: answer }))
     );
+    socket.on("curator:promoted", ({ curators }) =>
+      setIsCurator((curators ?? []).includes(socket.id))
+    );
     socket.on("cluster:upvote", ({ questionText, upvoteCount }) =>
       setClusters(prev => prev.map(c => ({
         ...c,
@@ -135,13 +170,22 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
         ),
       })))
     );
-    socket.on("cluster:submission:added", ({ clusterId, question, submissionCount }) => {
+    socket.on("cluster:submission:added", async ({ clusterId, question, submissionCount }) => {
+      let decryptedQuestion = question;
+      if (encryptedRef.current) {
+        try {
+          const { ciphertext, nonce } = JSON.parse(question.text);
+          decryptedQuestion = { ...question, text: await decryptText(roomKeyRef.current, ciphertext, nonce) };
+        } catch {
+          decryptedQuestion = { ...question, text: "[encrypted: key unavailable]" };
+        }
+      }
       setClusters(prev => prev.map(c => {
         if (String(c.id) !== String(clusterId)) return c;
         return {
           ...c,
           submission_count: submissionCount,
-          questions: [...(c.questions ?? []), question],
+          questions: [...(c.questions ?? []), decryptedQuestion],
         };
       }));
     });
@@ -165,10 +209,13 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       setPhase(data.phase ?? "OPEN");
       setTitle(data.title ?? '');
       setDescription(data.description ?? '');
-      setClusters(data.clusters ?? []);
+      encryptedRef.current = !!data.encrypted;
+      if (socketIdRef.current) setIsCurator((data.curators ?? []).includes(socketIdRef.current));
+      const decryptedClusters = await decryptClusters(data.clusters, data.encrypted, roomKeyRef.current);
+      setClusters(decryptedClusters);
       setSubmissionCount(data.submissionCount ?? 0);
       const savedAnswers = {};
-      (data.clusters ?? []).forEach(c => {
+      decryptedClusters.forEach(c => {
         if (c.answer) savedAnswers[c.id] = c.answer;
       });
       setAnswers(savedAnswers);
@@ -255,10 +302,16 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
   async function submitToCluster(clusterId, text) {
     setError("");
     try {
+      let payload = { content: text };
+      if (encryptedRef.current) {
+        if (!roomKeyRef.current) throw new Error("Waiting for the host to share the encryption key. Try again in a moment.");
+        const { ciphertext, nonce } = await encryptText(roomKeyRef.current, text);
+        payload = { content: ciphertext, nonce };
+      }
       const res = await fetch(`${apiBase}/api/sessions/${code}/clusters/${clusterId}/submit`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: text }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -267,7 +320,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
         saveMySubmissions(code, next);
         return next;
       });
-      if (user) {
+      // Skip the Supabase copy for encrypted sessions so plaintext never lands there (matches submitQuestion).
+      if (user && !encryptedRef.current) {
         const { error: sbError } = await supabase.from("user_submissions").insert({
           user_id: user.id, session_code: code, submission_id: data.id, content: text,
         });
@@ -275,6 +329,24 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       }
     } catch (err) {
       setError(err.message ?? "Failed to submit to cluster.");
+    }
+  }
+
+  // Curators answer clusters through the same endpoint the host uses.
+  async function saveClusterAnswer(clusterId, answer) {
+    setError("");
+    try {
+      const res = await fetch(`${apiBase}/api/sessions/${code}/clusters/${clusterId}/answer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ answer }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setAnswers(prev => ({ ...prev, [String(clusterId)]: answer }));
+      return true;
+    } catch (err) {
+      setError(err.message ?? "Failed to save answer.");
+      return false;
     }
   }
 
@@ -390,6 +462,12 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
         <ParticipantHeader {...headerProps} />
         <div className="pd-body">
           {error && <div className="pd-error">{error}</div>}
+          {isCurator && (
+            <div className="pd-round2-banner">
+              <div className="pd-round2-title">You're a curator</div>
+              <p className="pd-round2-sub">The host has asked you to help answer. Use "Answer this cluster" on any cluster below.</p>
+            </div>
+          )}
           <ParticipantInput
             phase="OPEN"
             submissions={submissions}
@@ -409,6 +487,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
             followups={followups}
             onUpvote={upvoteQuestion}
             onSubmitToCluster={submitToCluster}
+            isCurator={isCurator}
+            onSaveAnswer={saveClusterAnswer}
           />
         </div>
       </div>

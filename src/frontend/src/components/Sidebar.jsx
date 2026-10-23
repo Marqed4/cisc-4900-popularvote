@@ -28,7 +28,7 @@ function formatDate(iso) {
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNavigate }) {
+export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNavigate, clearOnExit, onToggleClearOnExit }) {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading]   = useState(false);
 
@@ -159,6 +159,10 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
         </div>
 
         <div className="sb-footer">
+          <label className="sb-clear-row" title="Also clears encryption keys and signs you out on next visit">
+            <input type="checkbox" checked={clearOnExit} onChange={onToggleClearOnExit} />
+            <span>Clear saved data when I leave</span>
+          </label>
           {user ? (
             <div className="sb-user-row">
               <div className="sb-user-info">

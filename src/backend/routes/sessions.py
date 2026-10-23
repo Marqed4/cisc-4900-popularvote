@@ -1,3 +1,5 @@
+import json
+
 from flask import Blueprint, request, jsonify, current_app
 from pypdf import PdfReader
 import io
@@ -5,6 +7,7 @@ import io
 from src.backend.managers import clustering_controller as clustering_engine
 from src.backend.managers.websocket_manager import to_session
 from src.backend.database import session_store as SessionStore
+from src.backend.routes.submissions import ENCRYPTED_CONTENT_LIMIT
 
 sessions_bp = Blueprint('sessions', __name__)
 
@@ -194,6 +197,7 @@ def submit_to_cluster(code, cluster_id):
     try:
         body = request.get_json() or {}
         content = body.get('content')
+        nonce = body.get('nonce')
         session_manager = current_app.session_manager
         socketio = current_app.socketio
         session = session_manager.get_session(code)
@@ -202,23 +206,33 @@ def submit_to_cluster(code, cluster_id):
             return jsonify({'error': 'Session not found'}), 404
         if not content or not content.strip():
             return jsonify({'error': 'Question is required'}), 400
-        if len(content) > 500:
-            return jsonify({'error': 'Question exceeds 500 character limit'}), 400
+
+        encrypted = session.get('encrypted', False)
+        if encrypted and not nonce:
+            return jsonify({'error': 'Encrypted session requires a nonce'}), 400
+
+        limit = ENCRYPTED_CONTENT_LIMIT if encrypted else 500
+        if len(content) > limit:
+            return jsonify({'error': f'Question exceeds {limit} character limit'}), 400
 
         content = content.strip()
-        saved = SessionStore.add_submission(code, content)
+        # Encrypted sessions store the ciphertext+nonce blob, same convention as
+        # routes/submissions.py submit() - the server never holds plaintext either way.
+        stored_content = json.dumps({'ciphertext': content, 'nonce': nonce}) if encrypted else content
+        saved = SessionStore.add_submission(code, stored_content)
         session['submissions'].append(saved)
 
+        question = {'text': stored_content, 'upvoteCount': 0}
         cluster = next((c for c in session['clusters'] if str(c['id']) == str(cluster_id)), None)
         if cluster:
-            cluster['questions'] = (cluster.get('questions') or []) + [{'text': content, 'upvoteCount': 0}]
+            cluster['questions'] = (cluster.get('questions') or []) + [question]
             cluster['submission_count'] = (cluster.get('submission_count') or 0) + 1
             SessionStore.update_cluster_query(cluster_id, cluster['representative_query'], cluster['submission_count'], cluster['questions'])
 
         socketio.emit('submission:count', {'count': len(session['submissions'])}, to=code)
         socketio.emit('cluster:submission:added', {
             'clusterId': cluster_id,
-            'question': {'text': content, 'upvoteCount': 0},
+            'question': question,
             'submissionCount': cluster['submission_count'] if cluster else 0,
         }, to=code)
 
