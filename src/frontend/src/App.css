@@ -9,6 +9,10 @@ body::before {
   z-index: 0;
 }
 
+/* the scrim only helps on dark backgrounds; on light ones it turns white glass panels gray */
+[data-theme="light"] body::before { background: rgba(0, 0, 0, 0.04); }
+[data-theme="dark"]  body::before { background: rgba(0, 0, 0, 0.28); }
+
 #root {
   position: relative;
   z-index: 1;
