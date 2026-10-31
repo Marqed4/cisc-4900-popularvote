@@ -54,7 +54,7 @@ function BackgroundPicker({ current, onSelect, onClose, darkMode }) {
   );
 }
 
-export default function HostHeader({ phase, participantCount, submissionCount, onBack, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg }) {
+export default function HostHeader({ phase, participantCount, viewerCount, submissionCount, onBack, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg }) {
   const [showBgPicker, setShowBgPicker] = useState(false);
 
   return (
@@ -75,6 +75,10 @@ export default function HostHeader({ phase, participantCount, submissionCount, o
           <div className="hd-stat">
             <span className="hd-stat-num">{participantCount}</span>
             <span className="hd-stat-label">participants</span>
+          </div>
+          <div className="hd-stat" title="Unique devices that have joined this session">
+            <span className="hd-stat-num">{viewerCount ?? 0}</span>
+            <span className="hd-stat-label">devices</span>
           </div>
           <div className="hd-stat">
             <span className="hd-stat-num">{submissionCount}</span>

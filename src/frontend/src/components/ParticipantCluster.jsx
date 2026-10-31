@@ -1,4 +1,5 @@
 import { useState } from "react";
+import "./ParticipantInput.css"; // shared .pd-textarea / .pd-btn-* styles
 import "./ParticipantCluster.css";
 
 const MAX_CHARS = 500;
@@ -17,6 +18,7 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
   const [submittedChips, setSubmittedChips] = useState(new Set()); // chips already submitted
 
   const questions = cluster.questions ?? [];
+  const hasMine = questions.some(q => myTexts.has(q.text));
   const isEnded = phase === "ENDED";
   const remaining = MAX_CHARS - clusterInput.length;
 
@@ -24,35 +26,51 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
     const trimmed = clusterInput.trim();
     if (!trimmed) return;
     setSubmitLoading(true);
-    await onSubmitToCluster(cluster.id, trimmed);
-    setClusterInput("");
-    setAddingQuestion(false);
-    setSubmitLoading(false);
+    try {
+      // return false from onSubmitToCluster on failure to keep the draft
+      const ok = await onSubmitToCluster(cluster.id, trimmed);
+      if (ok !== false) {
+        setClusterInput("");
+        setAddingQuestion(false);
+      }
+    } catch {
+      // keep the draft so the person can retry
+    } finally {
+      setSubmitLoading(false);
+    }
   }
 
   async function handleAnswerSave() {
     const trimmed = answerDraft.trim();
     if (!trimmed) return;
     setAnswerSaving(true);
-    const ok = await onSaveAnswer(cluster.id, trimmed);
-    setAnswerSaving(false);
-    if (ok) setEditingAnswer(false);
+    try {
+      const ok = await onSaveAnswer(cluster.id, trimmed);
+      if (ok) setEditingAnswer(false);
+    } finally {
+      setAnswerSaving(false);
+    }
   }
 
   async function handleChipClick(q) {
     if (loadingChip || submittedChips.has(q)) return;
     setLoadingChip(q);
-    await onSubmitToCluster(cluster.id, q);
-    setSubmittedChips(prev => new Set([...prev, q]));
-    setLoadingChip(null);
+    try {
+      const ok = await onSubmitToCluster(cluster.id, q);
+      if (ok !== false) setSubmittedChips(prev => new Set([...prev, q]));
+    } catch {
+      // leave the chip tappable so the person can retry
+    } finally {
+      setLoadingChip(null);
+    }
   }
 
   return (
-    <div className={`pd-cluster ${questions.some(q => myTexts.has(q.text)) ? "pd-cluster--mine" : ""}`}>
+    <div className={`pd-cluster ${hasMine ? "pd-cluster--mine" : ""}`}>
       <div className="pd-cluster-top">
         <div className="pd-cluster-left">
           <span className="pd-cluster-badge">{cluster.submission_count} submission{cluster.submission_count !== 1 ? "s" : ""}</span>
-          {questions.some(q => myTexts.has(q.text)) && (
+          {hasMine && (
             <span className="pd-cluster-mine-tag">your question</span>
           )}
         </div>
@@ -129,6 +147,7 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
           <button
             className="pd-expand-btn"
             onClick={() => setExpanded(v => !v)}
+            aria-expanded={expanded}
           >
             {expanded ? "Hide questions ▲" : `Show ${questions.length} question${questions.length !== 1 ? "s" : ""} ▼`}
           </button>
@@ -149,6 +168,7 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
                         className={`pd-upvote-btn ${voted ? "pd-upvote-btn--voted" : ""}`}
                         onClick={() => onUpvote(q.text)}
                         title={voted ? "Remove upvote" : "Upvote"}
+                        aria-pressed={!!voted}
                       >
                         ▲ {q.upvoteCount ?? 0}
                       </button>
@@ -236,11 +256,7 @@ export default function ParticipantClusterList({
         <ClusterCard
           key={cluster.id}
           cluster={cluster}
-          /*This way answers from the socket will 
-          match cluster.id from the DB, even if one is a number and the other is a string.
-          This should let them appear instantly when the host answers a cluster, 
-          without needing to refresh or wait for another update.
-          */
+          /* object keys are always strings, so this also matches ids sent over the socket */
           answer={answers[String(cluster.id)]}
           myTexts={myTexts}
           upvotes={upvotes}

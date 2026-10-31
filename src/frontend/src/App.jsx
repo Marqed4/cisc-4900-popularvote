@@ -7,6 +7,9 @@ import AuthModal from './components/AuthModal.jsx';
 import { DefaultBackgrounds } from './assets/backgrounds/index.js';
 import { supabase } from './lib/supabase.js';
 import './App.css';
+// shared styles (background picker modal, nav icon buttons) live here and are used by Host/Participant too
+import './components/Home.css';
+import "./components/foil-theme.css";
 
 const BG_STORAGE_KEY = "pv-background";
 const CLEAR_ON_EXIT_KEY = "pv-clear-on-exit";

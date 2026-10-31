@@ -1,259 +1,514 @@
-# The database layer. Every function here is one Supabase call (or two) and nothing else, no
-# business rules. session_manager.py decides what should happen, this file just writes it down.
-# Three tables: sessions, submissions (the questions), clusters (the groups of questions).
-# Columns are snake_case here, the in-memory sessions use camelCase, the manager translates.
-from src.backend.database.supabase_client import supabase
+import json
 
-# Supabase returns at most 1000 rows per request, so big lists are fetched in pages.
-PAGE_SIZE = 1000
+from flask import Blueprint, request, jsonify, current_app
+from pypdf import PdfReader
+import io
 
+from src.backend.managers import clustering_controller as clustering_engine
+from src.backend.managers.websocket_manager import to_session
+from src.backend.database import session_store as SessionStore
+from src.backend.routes.submissions import ENCRYPTED_CONTENT_LIMIT
 
-def _fetch_all(build_query):
-    # build_query returns a fresh, ordered query each time. keeps asking for the next page
-    # until one comes back short.
-    rows = []
-    start = 0
-    while True:
-        batch = build_query().range(start, start + PAGE_SIZE - 1).execute().data or []
-        rows.extend(batch)
-        if len(batch) < PAGE_SIZE:
-            return rows
-        start += PAGE_SIZE
+sessions_bp = Blueprint('sessions', __name__)
+
+MAX_PDF_SIZE = 10 * 1024 * 1024
 
 
-# --- sessions table -------------------------------------------------------------------------
-
-def create_session(code, tags=None, title='', description='', encrypted=False):
-    # the row starts as OPEN with no curators. title, description and encrypted go in as
-    # separate updates after, so an older schema missing those columns can still create rooms.
-    tags = tags or []
-    result = supabase.table('sessions').insert({
-        'code': code, 'phase': 'OPEN', 'tags': tags, 'expansion_round': 0, 'curators': []
-    }).execute()
-
-    if title or description:
-        try:
-            supabase.table('sessions').update({'title': title, 'description': description}).eq('code', code).execute()
-        except Exception as e:
-            print(f'[createSession] context write skipped: {e}')
-
-    if encrypted:
-        # no try/except on purpose. if this write fails the database says "not encrypted"
-        # while the host thinks it is, and that's the kind of quiet lie that hurts later.
-        # let it raise so session_manager at least hears about it.
-        supabase.table('sessions').update({'encrypted': True}).eq('code', code).execute()
-
-    return result.data
+@sessions_bp.route('/sessions', methods=['POST'])
+def create_session():
+    try:
+        body = request.get_json(silent=True) or {}
+        tags = body.get('tags', [])
+        title = body.get('title', '')
+        description = body.get('description', '')
+        encrypted = bool(body.get('encrypted', False))
+        session_manager = current_app.session_manager
+        session = session_manager.create_session(tags, title, description, encrypted)
+        return jsonify({
+            'code': session['code'], 'phase': session['phase'], 'tags': session['tags'],
+            'title': session['title'], 'description': session['description'],
+            'encrypted': session['encrypted'],
+        })
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to create session'}), 500
 
 
-def get_session(code):
-    # .single() raises if there isn't exactly one row, which the manager treats as "not found"
-    result = supabase.table('sessions').select('*').eq('code', code).single().execute()
-    return result.data
+@sessions_bp.route('/sessions/<code>/join', methods=['POST'])
+def join_session(code):
+    try:
+        session_manager = current_app.session_manager
+        session = session_manager.get_session_async(code)
+
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+
+        if session['phase'] == 'ENDED':
+            return jsonify({
+                'code': session['code'], 'phase': session['phase'],
+                'participantCount': session['participantCount'], 'summaryAvailable': True,
+            })
+
+        count = session_manager.increment_participants(code)
+        return jsonify({'code': session['code'], 'phase': session['phase'], 'participantCount': count})
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to join session'}), 500
 
 
-def update_phase(code, phase):
-    supabase.table('sessions').update({'phase': phase}).eq('code', code).execute()
+@sessions_bp.route('/sessions/<code>/close', methods=['POST'])
+def close_session(code):
+    try:
+        session_manager = current_app.session_manager
+        socketio = current_app.socketio
+        session = session_manager.get_session_async(code)
+
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+        if session['phase'] not in ('OPEN', 'EXPANDING'):
+            return jsonify({'error': 'Session is not accepting submissions'}), 400
+
+        session_manager.transition_phase(code, 'CLOSED')
+        to_session(socketio, code, 'session:closed', None)
+
+        return jsonify({'code': code, 'phase': 'CLOSED'})
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to close session'}), 500
 
 
-def update_tags(code, tags):
-    supabase.table('sessions').update({'tags': tags}).eq('code', code).execute()
+@sessions_bp.route('/sessions/<code>/cluster', methods=['POST'])
+def cluster_session(code):
+    session_manager = current_app.session_manager
+    socketio = current_app.socketio
+    session = session_manager.get_session(code)
 
+    try:
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+        if len(session['submissions']) == 0:
+            return jsonify({'error': 'No submissions to cluster'}), 400
+        if session['phase'] not in ('OPEN', 'CLOSED', 'RESULTS'):
+            return jsonify({'error': 'Session is not in a clusterable state'}), 400
 
-def update_session_context(code, title, description):
-    supabase.table('sessions').update({'title': title, 'description': description}).eq('code', code).execute()
+        session_manager.transition_phase(code, 'CLUSTERING')
+        to_session(socketio, code, 'session:clustering', None)
 
+        if session.get('encrypted'):
+            body = request.get_json(silent=True) or {}
+            clusters = body.get('clusters')
+            if not isinstance(clusters, list):
+                return jsonify({'error': 'Encrypted session requires client-computed clusters'}), 400
 
-def update_host_notes(code, host_notes):
-    supabase.table('sessions').update({'host_notes': host_notes}).eq('code', code).execute()
+            saved = session_manager.save_clusters(code, clusters)
+            session['submissionsAtLastCluster'] = len(session['submissions'])
+            session_manager.transition_phase(code, 'RESULTS')
 
+            to_session(socketio, code, 'session:results', {
+                'clusters': saved, 'submissionsAtLastCluster': len(session['submissions']),
+            })
+            return jsonify({'clusters': saved})
 
-def delete_session(code):
-    # a hard delete. nothing in the current flow calls it, delete_session in the manager
-    # only marks the row DELETED and leaves it here.
-    supabase.table('sessions').delete().eq('code', code).execute()
+        answered_clusters = [c for c in (session.get('clusters') or []) if c.get('answer')]
+        last_cluster_idx = session.get('submissionsAtLastCluster') or 0
+        new_subs = session['submissions'][last_cluster_idx:]
 
+        if answered_clusters and new_subs:
+            result = clustering_engine.incremental_cluster(new_subs, answered_clusters, session['tags'])
 
-# --- submissions table: the pile of questions -----------------------------------------------
+            for update in result['updatedClusters']:
+                cluster_id = update['clusterId']
+                added_questions = update['addedQuestions']
+                cluster = next((c for c in session['clusters'] if str(c['id']) == str(cluster_id)), None)
+                if not cluster:
+                    continue
+                cluster['questions'] = (cluster.get('questions') or []) + added_questions
+                cluster['submission_count'] = (cluster.get('submission_count') or 0) + len(added_questions)
+                try:
+                    SessionStore.update_cluster_query(cluster_id, cluster['representative_query'], cluster['submission_count'], cluster['questions'])
+                except Exception as err:
+                    print(f'[incremental] failed to update cluster {cluster_id}', err)
 
-def add_submission(session_code, content):
-    # `content` is plain text or the ciphertext json string, stored the same either way.
-    # the inserted row comes back with its generated id, which is what the client needs.
-    result = supabase.table('submissions').insert({
-        'session_code': session_code, 'content': content, 'participant_answer': None, 'is_curator': False
-    }).execute()
-    return result.data[0]
+            if result['newClusters']:
+                saved_new = SessionStore.save_new_clusters(code, result['newClusters'])
+                session['clusters'].extend(saved_new)
 
+            session['submissionsAtLastCluster'] = len(session['submissions'])
+            session_manager.transition_phase(code, 'RESULTS')
+            to_session(socketio, code, 'session:results', {
+                'clusters': session['clusters'], 'submissionsAtLastCluster': len(session['submissions']),
+            })
+            return jsonify({'clusters': session['clusters']})
 
-def delete_submission(submission_id, session_code=None):
-    # pass session_code and the delete only matches a submission in that room, so a guessed
-    # id from another room does nothing. optional so older callers keep working.
-    query = supabase.table('submissions').delete().eq('id', submission_id)
-    if session_code:
-        query = query.eq('session_code', session_code)
-    query.execute()
+        clusters = clustering_engine.cluster(session['submissions'], session['tags'])
 
+        saved = session_manager.save_clusters(code, clusters)
+        session['submissionsAtLastCluster'] = len(session['submissions'])
+        session_manager.transition_phase(code, 'RESULTS')
 
-def get_submissions(session_code):
-    # oldest first, so the host's live feed reads in the order questions came in
-    return _fetch_all(lambda: (
-        supabase.table('submissions').select('*')
-        .eq('session_code', session_code).order('created_at')
-    ))
-
-
-def update_submission_answer(submission_id, participant_answer):
-    supabase.table('submissions').update({'participant_answer': participant_answer}).eq('id', submission_id).execute()
-
-
-# --- clusters table: the groups ---------------------------------------------------------------
-
-def save_clusters(session_code, clusters):
-    # a clustering run replaces every cluster for the session. the old rows are indexed by
-    # representative query so a new cluster with the same query inherits the old one's answer,
-    # upvotes, selections and so on. otherwise re-clustering would erase the host's work.
-    # a cluster whose query changed has no match and starts blank.
-    existing = supabase.table('clusters').select('*').eq('session_code', session_code).execute().data or []
-    old_ids = [c['id'] for c in existing]
-
-    # each old row can be inherited once, so two clusters with the same query don't share one
-    by_query = {}
-    for c in existing:
-        by_query.setdefault(c['representative_query'], []).append(c)
-
-    rows = []
-    for c in clusters:
-        matches = by_query.get(c.get('representativeQuery'))
-        prev = matches.pop(0) if matches else None
-        new_answer = c.get('answer')
-        # for each field: use the new value if there is one, else fall back to the old row's
-        rows.append({
-            'session_code': session_code,
-            'representative_query': c.get('representativeQuery'),
-            'submission_count': c.get('submissionCount'),
-            'questions': c.get('questions'),
-            'answer': new_answer if new_answer is not None else (prev.get('answer') if prev else None),
-            'upvote_count': c.get('upvoteCount') or (prev.get('upvote_count') if prev else 0),
-            'previewed_questions': c.get('previewedQuestions') or (prev.get('previewed_questions') if prev else []),
-            'selected_questions': c.get('selectedQuestions') or (prev.get('selected_questions') if prev else []),
-            'contextual_facts': c.get('contextualFacts') or (prev.get('contextual_facts') if prev else []),
-            'participant_answers': c.get('participantAnswers') or (prev.get('participant_answers') if prev else []),
+        to_session(socketio, code, 'session:results', {
+            'clusters': saved, 'submissionsAtLastCluster': len(session['submissions']),
         })
 
-    # insert the new rows first and delete the old ones after, so a failed insert leaves the
-    # old clusters (and the host's answers) in place instead of an empty session.
-    result_data = []
-    if rows:
-        result_data = supabase.table('clusters').insert(rows).execute().data
-    if old_ids:
-        supabase.table('clusters').delete().in_('id', old_ids).execute()
-    return result_data
+        response = jsonify({'clusters': saved})
+
+        if session.get('hostNotes'):
+            try:
+                suggestions = []
+                for cluster in saved:
+                    suggestion = clustering_engine.generate_suggested_answer(
+                        cluster, session['hostNotes'], session['title'], session['description']
+                    )
+                    suggestions.append({'clusterId': cluster['id'], 'suggestion': suggestion})
+                to_session(socketio, code, 'cluster:suggestions', {'suggestions': suggestions})
+            except Exception as err:
+                print('[RAG] suggestion generation failed:', err)
+
+        return response
+    except Exception as err:
+        print(err)
+        session_manager.transition_phase(code, 'CLOSED')
+        to_session(socketio, code, 'session:closed', None)
+        return jsonify({'error': 'Clustering failed. You can retry.'}), 500
 
 
-def save_new_clusters(session_code, clusters):
-    # the incremental path. only inserts, never deletes, so the answered clusters that
-    # already exist stay exactly as they are. everything starts blank.
-    if not clusters:
-        return []
-
-    rows = [{
-        'session_code': session_code,
-        'representative_query': c.get('representativeQuery'),
-        'submission_count': c.get('submissionCount'),
-        'questions': c.get('questions'),
-        'answer': None,
-        'upvote_count': 0,
-        'previewed_questions': [],
-        'selected_questions': [],
-        'contextual_facts': [],
-        'participant_answers': [],
-    } for c in clusters]
-
-    result = supabase.table('clusters').insert(rows).execute()
-    return result.data
-
-
-def delete_cluster(cluster_id):
-    supabase.table('clusters').delete().eq('id', cluster_id).execute()
-
-
-def update_cluster_answer(cluster_id, answer):
-    supabase.table('clusters').update({'answer': answer}).eq('id', cluster_id).execute()
-
-
-def update_cluster_questions(cluster_id, questions):
-    # used for upvotes, which live inside the questions json rather than their own column.
-    # this overwrites the whole list, so two upvotes at the same moment can lose one.
-    supabase.table('clusters').update({'questions': questions}).eq('id', cluster_id).execute()
-
-
-def update_cluster_query(cluster_id, representative_query, submission_count, questions):
-    # a cluster grew. new questions landed in it, so the count and the list change together.
-    supabase.table('clusters').update({
-        'representative_query': representative_query,
-        'submission_count': submission_count,
-        'questions': questions,
-    }).eq('id', cluster_id).execute()
-
-
-def update_cluster_previewed_questions(cluster_id, previewed_questions):
-    supabase.table('clusters').update({'previewed_questions': previewed_questions}).eq('id', cluster_id).execute()
-
-
-def update_cluster_selected_questions(cluster_id, selected_questions):
-    supabase.table('clusters').update({'selected_questions': selected_questions}).eq('id', cluster_id).execute()
-
-
-def update_cluster_contextual_facts(cluster_id, contextual_facts):
-    supabase.table('clusters').update({'contextual_facts': contextual_facts}).eq('id', cluster_id).execute()
-
-
-def add_participant_answer_to_cluster(cluster_id, answer):
-    # best path is the append_participant_answer function in the database (see migration.sql),
-    # which adds the answer in one step so overlapping answers can't overwrite each other.
-    # if that function isn't installed yet, fall back to read, append, write back.
+@sessions_bp.route('/sessions/<code>/clusters/<cluster_id>/select', methods=['POST'])
+def select_question(code, cluster_id):
     try:
-        supabase.rpc('append_participant_answer', {'p_id': cluster_id, 'p_answer': answer}).execute()
-        return
-    except Exception as e:
-        print(f'[addParticipantAnswer] rpc unavailable, using fallback: {e}')
+        body = request.get_json() or {}
+        question = body.get('question')
+        session_manager = current_app.session_manager
+        socketio = current_app.socketio
 
-    fetch_result = supabase.table('clusters').select('participant_answers').eq('id', cluster_id).single().execute()
-    current = fetch_result.data.get('participant_answers') or []
-    supabase.table('clusters').update({'participant_answers': current + [answer]}).eq('id', cluster_id).execute()
+        cluster = session_manager.toggle_selected_question(code, cluster_id, question)
 
+        to_session(socketio, code, 'question:selected', {
+            'clusterId': cluster_id, 'selectedQuestions': cluster['selected_questions'],
+        })
 
-def get_clusters(session_code):
-    # oldest first, so clusters come back in the order they were created
-    return _fetch_all(lambda: (
-        supabase.table('clusters').select('*')
-        .eq('session_code', session_code).order('created_at')
-    ))
-
-
-# --- boot, curators and expansion rounds ------------------------------------------------------
-
-def get_unclosed_sessions():
-    # what hydrate() loads on boot. ENDED sessions still count as "unclosed" here, only
-    # DELETED ones are skipped, so finished rooms keep their summary after a restart.
-    return _fetch_all(lambda: (
-        supabase.table('sessions').select('*').neq('phase', 'DELETED').order('code')
-    ))
+        return jsonify({'clusterId': cluster_id, 'selectedQuestions': cluster['selected_questions']})
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to toggle selected question'}), 500
 
 
-def update_curators(code, curators):
-    supabase.table('sessions').update({'curators': curators}).eq('code', code).execute()
-
-
-def increment_expansion_round(code):
-    # same idea as the participant answers: use the database function when it exists
-    # (see migration.sql), otherwise read the number and write it back plus one.
+@sessions_bp.route('/sessions/<code>/clusters/<cluster_id>/submit', methods=['POST'])
+def submit_to_cluster(code, cluster_id):
     try:
-        supabase.rpc('increment_expansion_round', {'p_code': code}).execute()
-        return
-    except Exception as e:
-        print(f'[incrementExpansionRound] rpc unavailable, using fallback: {e}')
+        body = request.get_json() or {}
+        content = body.get('content')
+        nonce = body.get('nonce')
+        session_manager = current_app.session_manager
+        socketio = current_app.socketio
+        session = session_manager.get_session(code)
 
-    fetch_result = supabase.table('sessions').select('expansion_round').eq('code', code).single().execute()
-    current = fetch_result.data.get('expansion_round') or 0
-    supabase.table('sessions').update({'expansion_round': current + 1}).eq('code', code).execute()
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+        if not content or not content.strip():
+            return jsonify({'error': 'Question is required'}), 400
+
+        encrypted = session.get('encrypted', False)
+        if encrypted and not nonce:
+            return jsonify({'error': 'Encrypted session requires a nonce'}), 400
+
+        limit = ENCRYPTED_CONTENT_LIMIT if encrypted else 500
+        if len(content) > limit:
+            return jsonify({'error': f'Question exceeds {limit} character limit'}), 400
+
+        content = content.strip()
+        # Encrypted sessions store the ciphertext+nonce blob, same convention as
+        # routes/submissions.py submit() - the server never holds plaintext either way.
+        stored_content = json.dumps({'ciphertext': content, 'nonce': nonce}) if encrypted else content
+        saved = SessionStore.add_submission(code, stored_content)
+        session['submissions'].append(saved)
+
+        question = {'text': stored_content, 'upvoteCount': 0}
+        cluster = next((c for c in session['clusters'] if str(c['id']) == str(cluster_id)), None)
+        if cluster:
+            cluster['questions'] = (cluster.get('questions') or []) + [question]
+            cluster['submission_count'] = (cluster.get('submission_count') or 0) + 1
+            SessionStore.update_cluster_query(cluster_id, cluster['representative_query'], cluster['submission_count'], cluster['questions'])
+
+        socketio.emit('submission:count', {'count': len(session['submissions'])}, to=code)
+        socketio.emit('cluster:submission:added', {
+            'clusterId': cluster_id,
+            'question': question,
+            'submissionCount': cluster['submission_count'] if cluster else 0,
+        }, to=code)
+
+        return jsonify({'id': saved['id'], 'content': saved['content']})
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to submit to cluster'}), 500
+
+
+@sessions_bp.route('/sessions/<code>/clusters/<cluster_id>/answer', methods=['POST'])
+def answer_cluster(code, cluster_id):
+    try:
+        body = request.get_json() or {}
+        answer = body.get('answer')
+        question = request.args.get('question')
+        session_manager = current_app.session_manager
+        socketio = current_app.socketio
+
+        if question:
+            cluster = session_manager.add_participant_answer_to_cluster(code, cluster_id, answer)
+            to_session(socketio, code, 'cluster:followup:answered', {'clusterId': cluster_id, 'answer': answer})
+            return jsonify(cluster)
+
+        cluster = session_manager.update_cluster_answer(code, cluster_id, answer)
+        to_session(socketio, code, 'cluster:answered', {'clusterId': cluster_id, 'answer': answer})
+
+        try:
+            suggestions = clustering_engine.generate_followup_suggestions(
+                cluster['representative_query'], answer, cluster.get('questions') or []
+            )
+            if suggestions:
+                to_session(socketio, code, 'cluster:followups', {'clusterId': cluster_id, 'suggestions': suggestions})
+        except Exception as err:
+            print('[followups] generation failed:', err)
+
+        return jsonify(cluster)
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to save answer'}), 500
+
+
+@sessions_bp.route('/sessions/<code>/curators', methods=['POST'])
+def update_curators(code):
+    try:
+        body = request.get_json() or {}
+        socket_id = body.get('socketId')
+        session_manager = current_app.session_manager
+        socketio = current_app.socketio
+
+        curators = session_manager.promote_curator(code, socket_id)
+
+        to_session(socketio, code, 'curator:promoted', {'curators': curators, 'socketId': socket_id})
+
+        return jsonify({'curators': curators})
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to update curator'}), 500
+
+
+@sessions_bp.route('/sessions/<code>/upvote', methods=['POST'])
+def upvote(code):
+    try:
+        body = request.get_json() or {}
+        question_text = body.get('questionText')
+        undo = body.get('undo', False)
+        session_manager = current_app.session_manager
+        socketio = current_app.socketio
+
+        if not question_text:
+            return jsonify({'error': 'questionText is required'}), 400
+
+        result = session_manager.upvote_question(code, question_text, undo)
+
+        to_session(socketio, code, 'cluster:upvote', {
+            'questionText': question_text, 'upvoteCount': result['upvoteCount'],
+        })
+        return jsonify({'questionText': question_text, 'upvoteCount': result['upvoteCount']})
+    except Exception as err:
+        if str(err) == 'Session not found':
+            return jsonify({'error': str(err)}), 404
+        if str(err) == 'Question not found':
+            return jsonify({'error': str(err)}), 404
+        print(err)
+        return jsonify({'error': 'Failed to record upvote'}), 500
+
+
+@sessions_bp.route('/sessions/<code>/context', methods=['PATCH'])
+def update_context(code):
+    try:
+        body = request.get_json() or {}
+        title = body.get('title', '')
+        description = body.get('description', '')
+        session_manager = current_app.session_manager
+
+        session = session_manager.get_session(code)
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+
+        session['title'] = title
+        session['description'] = description
+        try:
+            SessionStore.update_session_context(code, title, description)
+        except Exception as err:
+            print('[context] DB write failed (schema cache may be stale):', err)
+
+        return jsonify({'title': title, 'description': description})
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to update session context'}), 500
+
+
+@sessions_bp.route('/sessions/<code>/notes', methods=['PATCH'])
+def update_notes(code):
+    try:
+        session_manager = current_app.session_manager
+
+        session = session_manager.get_session(code)
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+
+        pdf_file = request.files.get('pdf')
+        if pdf_file:
+            data = pdf_file.read()
+            if len(data) > MAX_PDF_SIZE:
+                return jsonify({'error': 'PDF exceeds 10MB limit'}), 400
+            reader = PdfReader(io.BytesIO(data))
+            extracted_text = '\n'.join(page.extract_text() or '' for page in reader.pages).strip()
+            if not extracted_text:
+                return jsonify({'error': 'Could not extract text from PDF'}), 400
+            return jsonify({'extracted': extracted_text})
+
+        body = request.get_json(silent=True) or {}
+        host_notes = body.get('hostNotes')
+        session['hostNotes'] = host_notes
+        try:
+            SessionStore.update_host_notes(code, host_notes)
+        except Exception as err:
+            print('[notes] DB write failed (schema cache may be stale):', err)
+
+        return jsonify({'success': True, 'length': len(host_notes) if host_notes else 0})
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to save host notes'}), 500
+
+
+@sessions_bp.route('/sessions/<code>/tags', methods=['PATCH'])
+def update_tags(code):
+    try:
+        session_manager = current_app.session_manager
+        body = request.get_json() or {}
+        tags = body.get('tags')
+
+        if not isinstance(tags, list):
+            return jsonify({'error': 'tags must be an array'}), 400
+
+        session = session_manager.get_session_async(code)
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+        if session['phase'] not in ('OPEN', 'RESULTS', 'ENDED'):
+            return jsonify({'error': 'Tags can only be updated in OPEN, RESULTS, or ENDED phase'}), 400
+
+        session['tags'] = tags
+        SessionStore.update_tags(code, tags)
+
+        return jsonify({'tags': session['tags']})
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to update tags'}), 500
+
+
+@sessions_bp.route('/sessions/<code>', methods=['GET'])
+def get_session(code):
+    try:
+        session_manager = current_app.session_manager
+        session = session_manager.get_session_async(code)
+
+        if not session:
+            return jsonify({'error': 'Session not found, buddy'}), 404
+
+        return jsonify({
+            'code': session['code'],
+            'phase': session['phase'],
+            'tags': session['tags'],
+            'title': session.get('title') or '',
+            'description': session.get('description') or '',
+            'hostNotes': session.get('hostNotes'),
+            'clusters': session.get('clusters') or [],
+            'submissions': session.get('submissions') or [],
+            'submissionCount': len(session.get('submissions') or []),
+            'submissionsAtLastCluster': session.get('submissionsAtLastCluster') or 0,
+            'participantCount': session.get('participantCount') or 0,
+            'expansionRound': session.get('expansionRound') or 0,
+            'curators': session.get('curators') or [],
+            'contextualFacts': session.get('contextualFacts') or [],
+            'encrypted': session.get('encrypted') or False,
+        })
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to load the session, my guy'}), 500
+
+
+@sessions_bp.route('/sessions/<code>/end', methods=['POST'])
+def end_session(code):
+    try:
+        session_manager = current_app.session_manager
+        socketio = current_app.socketio
+        session = session_manager.get_session(code)
+
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+
+        summary = [{
+            'representativeQuery': c.get('representative_query'),
+            'submissionCount': c.get('submission_count'),
+            'answer': c.get('answer'),
+            'participantAnswers': c.get('participant_answers') or [],
+            'selectedQuestions': c.get('selected_questions') or [],
+            'contextualFacts': c.get('contextual_facts') or [],
+        } for c in session['clusters']]
+
+        to_session(socketio, code, 'session:ended', {'summary': summary})
+
+        session_manager.end_session(code)
+        return jsonify({'message': 'Session ended', 'summary': summary})
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to end session'}), 500
+
+
+@sessions_bp.route('/sessions/<code>/summary', methods=['GET'])
+def get_summary(code):
+    try:
+        session_manager = current_app.session_manager
+        session = session_manager.get_session_async(code)
+
+        if not session:
+            return jsonify({'error': 'Session not found'}), 404
+        if session['phase'] != 'ENDED':
+            return jsonify({'error': 'Summary is not available until the session has ended'}), 403
+
+        summary = {
+            'code': session['code'],
+            'title': session.get('title') or '',
+            'description': session.get('description') or '',
+            'tags': session.get('tags') or [],
+            'expansionRound': session.get('expansionRound') or 0,
+            'contextualFacts': session.get('contextualFacts') or [],
+            'clusters': [{
+                'id': c['id'],
+                'representativeQuery': c.get('representative_query'),
+                'submissionCount': c.get('submission_count'),
+                'questions': c.get('questions') or [],
+                'answer': c.get('answer'),
+                'participantAnswers': c.get('participant_answers') or [],
+                'selectedQuestions': c.get('selected_questions') or [],
+                'contextualFacts': c.get('contextual_facts') or [],
+            } for c in session['clusters']],
+        }
+
+        return jsonify(summary)
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to load session summary'}), 500
+
+
+@sessions_bp.route('/sessions/<code>/clusters/<cluster_id>', methods=['DELETE'])
+def delete_cluster(code, cluster_id):
+    try:
+        session_manager = current_app.session_manager
+        socketio = current_app.socketio
+
+        session_manager.delete_cluster(code, cluster_id)
+
+        to_session(socketio, code, 'cluster:deleted', {'clusterId': cluster_id})
+
+        return jsonify({'message': 'Cluster deleted'})
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to delete cluster'}), 500

@@ -20,11 +20,14 @@
   flex-direction: column;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.1);
   transform: translateX(-100%);
-  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1);
+  visibility: hidden; /* keeps the closed drawer out of the tab order */
+  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s linear 0.24s;
 }
 
 .sb-sidebar--open {
   transform: translateX(0);
+  visibility: visible;
+  transition: transform 0.24s cubic-bezier(0.4, 0, 0.2, 1), visibility 0s;
 }
 .sb-header {
   display: flex;
@@ -164,6 +167,7 @@
 .sb-phase-closed  { background: var(--surface-sub, #f1f3f6); color: var(--text-2, #57534e); }
 .sb-phase-cluster { background: var(--blue-bg, #eff6ff); color: var(--blue, #1d4ed8); }
 .sb-phase-results { background: var(--blue-bg, #eff6ff); color: var(--blue, #1d4ed8); }
+.sb-phase-expanding { background: rgba(234, 88, 12, 0.12); color: #c2410c; }
 .sb-phase-ended   { background: var(--surface-sub, #f1f3f6); color: var(--text-3, #a8a29e); }
 
 /* Dismiss × button */
@@ -456,7 +460,6 @@
 }
 .am-back:hover { color: var(--text, #14171c); }
 
-.sb-title { letter-spacing: -0.01em; }
 .sb-avatar { background: var(--accent); color: #fff; }
 .am-magic-btn { background: var(--accent); color: #fff; font-weight: 500; font-style: normal; }
 .am-magic-btn:hover:not(:disabled) { background: var(--accent); opacity: 0.88; }
@@ -469,3 +472,14 @@
 
 /* keep the clear-data label on one line */
 .sb-clear-row { font-family: var(--font-sans); font-size: 0.8rem; white-space: nowrap; }
+
+/* touch devices have no hover, so keep the dismiss button visible */
+.sb-item:focus-within .sb-dismiss { opacity: 1; }
+@media (hover: none) {
+  .sb-dismiss { opacity: 1; }
+}
+
+/* 16px minimum stops iOS Safari zooming the page on focus */
+@media (max-width: 760px) {
+  .am-email-input { font-size: 16px; }
+}

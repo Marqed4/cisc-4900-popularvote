@@ -1,8 +1,26 @@
 # The database layer. Every function here is one Supabase call (or two) and nothing else, no
 # business rules. session_manager.py decides what should happen, this file just writes it down.
-# Three tables: sessions, submissions (the questions), clusters (the groups of questions).
+# Four tables: sessions, submissions (the questions), clusters (the groups of questions),
+# session_viewers (one row per unique device that has joined a session).
 # Columns are snake_case here, the in-memory sessions use camelCase, the manager translates.
 from src.backend.database.supabase_client import supabase
+
+# Supabase returns at most 1000 rows per request, so big lists are fetched in pages.
+PAGE_SIZE = 1000
+
+
+def _fetch_all(build_query):
+    # build_query returns a fresh, ordered query each time. keeps asking for the next page
+    # until one comes back short.
+    rows = []
+    start = 0
+    while True:
+        batch = build_query().range(start, start + PAGE_SIZE - 1).execute().data or []
+        rows.extend(batch)
+        if len(batch) < PAGE_SIZE:
+            return rows
+        start += PAGE_SIZE
+
 
 # --- sessions table -------------------------------------------------------------------------
 
@@ -68,13 +86,21 @@ def add_submission(session_code, content):
     return result.data[0]
 
 
-def delete_submission(submission_id):
-    supabase.table('submissions').delete().eq('id', submission_id).execute()
+def delete_submission(submission_id, session_code=None):
+    # pass session_code and the delete only matches a submission in that room, so a guessed
+    # id from another room does nothing. optional so older callers keep working.
+    query = supabase.table('submissions').delete().eq('id', submission_id)
+    if session_code:
+        query = query.eq('session_code', session_code)
+    query.execute()
 
 
 def get_submissions(session_code):
-    result = supabase.table('submissions').select('*').eq('session_code', session_code).execute()
-    return result.data
+    # oldest first, so the host's live feed reads in the order questions came in
+    return _fetch_all(lambda: (
+        supabase.table('submissions').select('*')
+        .eq('session_code', session_code).order('created_at')
+    ))
 
 
 def update_submission_answer(submission_id, participant_answer):
@@ -84,27 +110,30 @@ def update_submission_answer(submission_id, participant_answer):
 # --- clusters table: the groups ---------------------------------------------------------------
 
 def save_clusters(session_code, clusters):
-    # a clustering run replaces every cluster for the session. before the old rows go, they get
-    # indexed by representative query so a new cluster with the same query inherits the old
-    # one's answer, upvotes, selections and so on. otherwise re-clustering would erase the
-    # host's work. a cluster whose query changed has no match and starts blank.
-    existing_result = supabase.table('clusters').select('*').eq('session_code', session_code).execute()
-    existing = existing_result.data or []
-    existing_by_query = {c['representative_query']: c for c in existing}
+    # a clustering run replaces every cluster for the session. the old rows are indexed by
+    # representative query so a new cluster with the same query inherits the old one's answer,
+    # upvotes, selections and so on. otherwise re-clustering would erase the host's work.
+    # a cluster whose query changed has no match and starts blank.
+    existing = supabase.table('clusters').select('*').eq('session_code', session_code).execute().data or []
+    old_ids = [c['id'] for c in existing]
 
-    # delete-then-insert isn't atomic. if the insert below fails, the session has no clusters.
-    supabase.table('clusters').delete().eq('session_code', session_code).execute()
+    # each old row can be inherited once, so two clusters with the same query don't share one
+    by_query = {}
+    for c in existing:
+        by_query.setdefault(c['representative_query'], []).append(c)
 
     rows = []
     for c in clusters:
-        prev = existing_by_query.get(c.get('representativeQuery'))
+        matches = by_query.get(c.get('representativeQuery'))
+        prev = matches.pop(0) if matches else None
+        new_answer = c.get('answer')
         # for each field: use the new value if there is one, else fall back to the old row's
         rows.append({
             'session_code': session_code,
             'representative_query': c.get('representativeQuery'),
             'submission_count': c.get('submissionCount'),
             'questions': c.get('questions'),
-            'answer': c.get('answer') or (prev.get('answer') if prev else None),
+            'answer': new_answer if new_answer is not None else (prev.get('answer') if prev else None),
             'upvote_count': c.get('upvoteCount') or (prev.get('upvote_count') if prev else 0),
             'previewed_questions': c.get('previewedQuestions') or (prev.get('previewed_questions') if prev else []),
             'selected_questions': c.get('selectedQuestions') or (prev.get('selected_questions') if prev else []),
@@ -112,8 +141,14 @@ def save_clusters(session_code, clusters):
             'participant_answers': c.get('participantAnswers') or (prev.get('participant_answers') if prev else []),
         })
 
-    result = supabase.table('clusters').insert(rows).execute()
-    return result.data
+    # insert the new rows first and delete the old ones after, so a failed insert leaves the
+    # old clusters (and the host's answers) in place instead of an empty session.
+    result_data = []
+    if rows:
+        result_data = supabase.table('clusters').insert(rows).execute().data
+    if old_ids:
+        supabase.table('clusters').delete().in_('id', old_ids).execute()
+    return result_data
 
 
 def save_new_clusters(session_code, clusters):
@@ -148,7 +183,8 @@ def update_cluster_answer(cluster_id, answer):
 
 
 def update_cluster_questions(cluster_id, questions):
-    # used for upvotes, which live inside the questions json rather than their own column
+    # used for upvotes, which live inside the questions json rather than their own column.
+    # this overwrites the whole list, so two upvotes at the same moment can lose one.
     supabase.table('clusters').update({'questions': questions}).eq('id', cluster_id).execute()
 
 
@@ -174,18 +210,26 @@ def update_cluster_contextual_facts(cluster_id, contextual_facts):
 
 
 def add_participant_answer_to_cluster(cluster_id, answer):
-    # read, append, write back. two answers landing at the same moment can overwrite each
-    # other, since nothing locks the row in between.
+    # best path is the append_participant_answer function in the database (see migration.sql),
+    # which adds the answer in one step so overlapping answers can't overwrite each other.
+    # if that function isn't installed yet, fall back to read, append, write back.
+    try:
+        supabase.rpc('append_participant_answer', {'p_id': cluster_id, 'p_answer': answer}).execute()
+        return
+    except Exception as e:
+        print(f'[addParticipantAnswer] rpc unavailable, using fallback: {e}')
+
     fetch_result = supabase.table('clusters').select('participant_answers').eq('id', cluster_id).single().execute()
     current = fetch_result.data.get('participant_answers') or []
-    updated = current + [answer]
-    supabase.table('clusters').update({'participant_answers': updated}).eq('id', cluster_id).execute()
+    supabase.table('clusters').update({'participant_answers': current + [answer]}).eq('id', cluster_id).execute()
 
 
 def get_clusters(session_code):
     # oldest first, so clusters come back in the order they were created
-    result = supabase.table('clusters').select('*').eq('session_code', session_code).order('created_at').execute()
-    return result.data
+    return _fetch_all(lambda: (
+        supabase.table('clusters').select('*')
+        .eq('session_code', session_code).order('created_at')
+    ))
 
 
 # --- boot, curators and expansion rounds ------------------------------------------------------
@@ -193,8 +237,9 @@ def get_clusters(session_code):
 def get_unclosed_sessions():
     # what hydrate() loads on boot. ENDED sessions still count as "unclosed" here, only
     # DELETED ones are skipped, so finished rooms keep their summary after a restart.
-    result = supabase.table('sessions').select('*').neq('phase', 'DELETED').execute()
-    return result.data
+    return _fetch_all(lambda: (
+        supabase.table('sessions').select('*').neq('phase', 'DELETED').order('code')
+    ))
 
 
 def update_curators(code, curators):
@@ -202,8 +247,44 @@ def update_curators(code, curators):
 
 
 def increment_expansion_round(code):
-    # same read-then-write shape as the participant answers above, same race if two expands
-    # ever overlapped. the manager also bumps its own in-memory counter separately.
+    # same idea as the participant answers: use the database function when it exists
+    # (see migration.sql), otherwise read the number and write it back plus one.
+    try:
+        supabase.rpc('increment_expansion_round', {'p_code': code}).execute()
+        return
+    except Exception as e:
+        print(f'[incrementExpansionRound] rpc unavailable, using fallback: {e}')
+
     fetch_result = supabase.table('sessions').select('expansion_round').eq('code', code).single().execute()
     current = fetch_result.data.get('expansion_round') or 0
     supabase.table('sessions').update({'expansion_round': current + 1}).eq('code', code).execute()
+
+
+# --- session_viewers table: unique devices per session ----------------------------------------
+# needs migration_session_viewers.sql. one row per (session_code, device_id), and the primary
+# key does the deduplication, so refreshes, reconnects and two tabs racing can't double count.
+
+def record_viewer(session_code, device_id):
+    # returns True only the first time this device is seen in this room. ignore_duplicates
+    # turns a repeat insert into a no-op that returns no row, so an empty result means
+    # "already counted". a database error is not swallowed here, the manager decides what
+    # to do about it.
+    result = supabase.table('session_viewers').upsert(
+        {'session_code': session_code, 'device_id': device_id},
+        on_conflict='session_code,device_id',
+        ignore_duplicates=True,
+    ).execute()
+    return bool(result.data)
+
+
+def count_viewers(session_code):
+    # how many distinct devices have joined. hydrate() uses it on boot so the count
+    # survives a server restart. limit(1) because only the exact count is wanted, not the rows.
+    result = (
+        supabase.table('session_viewers')
+        .select('device_id', count='exact')
+        .eq('session_code', session_code)
+        .limit(1)
+        .execute()
+    )
+    return result.count or 0

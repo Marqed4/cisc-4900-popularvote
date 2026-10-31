@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
 import { supabase } from "../lib/supabase.js";
+import { getDeviceId } from "../lib/deviceId.js";
 import {
   generateKeyPair, exportPublicKey, importPublicKey, unwrapRoomKey, encryptText, decryptText,
   saveRoomKey, loadRoomKey,
@@ -82,11 +83,12 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
   // Step 1, first load. the saved key has to be in the ref before fetchSession runs, otherwise
   // an encrypted room paints as "key unavailable" for no good reason.
   useEffect(() => {
+    if (!code) { setLoading(false); setError("No session code."); return; }
     (async () => {
       roomKeyRef.current = await loadRoomKey(code);
       fetchSession();
     })();
-  }, []);
+  }, [code]);
 
   // Step 2, the socket. one connection per room code, closed again when we leave.
   useEffect(() => {
@@ -100,7 +102,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     // the server answers with session:sync.
     socket.on("connect", () => {
       socketIdRef.current = socket.id;
-      socket.emit("join:room", { code, role: "participant" });
+      socket.emit("join:room", { code, role: "participant", deviceId: getDeviceId() });
     });
 
     // the server's reply to join:room. catches us up on phase, clusters and curators, and for
@@ -305,8 +307,10 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
         });
         if (sbError) console.error("[user_submissions] insert failed:", sbError);
       }
+      return true;
     } catch (err) {
       setError(err.message ?? "Failed to submit question.");
+      return false;
     } finally {
       setSubmitLoading(false);
     }
@@ -366,8 +370,10 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
         });
         if (sbError) console.error("[user_submissions] insert failed:", sbError);
       }
+      return true;
     } catch (err) {
       setError(err.message ?? "Failed to submit to cluster.");
+      return false;
     }
   }
 

@@ -1,22 +1,47 @@
-import { jsPDF } from "jspdf";
 import "./Summary.css";
 
-export default function SummaryView({ clusters, answers, tags, submissionCount }) {
+function plural(n, word) {
+  return `${n} ${word}${n !== 1 ? "s" : ""}`;
+}
+
+// Questions can arrive as plain strings or as { text, upvoteCount } objects.
+function normalizeQuestion(q) {
+  return typeof q === "string"
+    ? { text: q, upvoteCount: 0 }
+    : { text: q.text ?? "", upvoteCount: q.upvoteCount ?? 0 };
+}
+
+function topQuestionsOf(cluster) {
+  return (cluster.questions ?? [])
+    .map(normalizeQuestion)
+    .sort((a, b) => b.upvoteCount - a.upvoteCount)
+    .slice(0, 5);
+}
+
+function saveBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+export default function SummaryView({ clusters, answers, tags, submissionCount, title = "Session Summary" }) {
+  const countLine = `${plural(clusters.length, "cluster")} · ${plural(submissionCount, "total submission")}`;
 
   function downloadMarkdown() {
     const lines = [];
-    lines.push("# Session Summary");
+    lines.push(`# ${title}`);
     if (tags?.length) lines.push(`**Topics:** ${tags.join(", ")}`);
-    lines.push(`${clusters.length} cluster${clusters.length !== 1 ? "s" : ""} · ${submissionCount} total submission${submissionCount !== 1 ? "s" : ""}`);
+    lines.push(countLine);
     lines.push("");
 
     clusters.forEach((cluster, i) => {
-      const topQuestions = [...(cluster.questions ?? [])]
-        .sort((a, b) => (b.upvoteCount ?? 0) - (a.upvoteCount ?? 0))
-        .slice(0, 5);
-
       lines.push(`## ${i + 1}. ${cluster.representative_query}`);
-      lines.push(`*${cluster.submission_count} submission${cluster.submission_count !== 1 ? "s" : ""}*`);
+      lines.push(`*${plural(cluster.submission_count, "submission")}*`);
       lines.push("");
 
       if (answers[cluster.id]) {
@@ -29,11 +54,10 @@ export default function SummaryView({ clusters, answers, tags, submissionCount }
         cluster.selected_questions.forEach(q => lines.push(`- ${q}`));
         lines.push("");
       }
-      if (topQuestions.length) {
+      const top = topQuestionsOf(cluster);
+      if (top.length) {
         lines.push("**Top questions**");
-        topQuestions.forEach(q => {
-          lines.push(`- ${q.text}${q.upvoteCount > 0 ? ` ▲ ${q.upvoteCount}` : ""}`);
-        });
+        top.forEach(q => lines.push(`- ${q.text}${q.upvoteCount > 0 ? ` ▲ ${q.upvoteCount}` : ""}`));
         lines.push("");
       }
       if (cluster.participant_answers?.length) {
@@ -43,16 +67,13 @@ export default function SummaryView({ clusters, answers, tags, submissionCount }
       }
     });
 
-    const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "session-summary.md";
-    a.click();
-    URL.revokeObjectURL(url);
+    saveBlob(new Blob([lines.join("\n")], { type: "text/markdown" }), "session-summary.md");
   }
 
-  function downloadPdf() {
+  async function downloadPdf() {
+    // loaded on demand so jsPDF stays out of the main bundle
+    const { jsPDF } = await import("jspdf");
+
     const doc = new jsPDF({ unit: "pt", format: "a4" });
     const pageW = doc.internal.pageSize.getWidth();
     const margin = 48;
@@ -70,33 +91,24 @@ export default function SummaryView({ clusters, answers, tags, submissionCount }
       doc.setFontSize(fontSize);
       doc.setFont("helvetica", bold ? "bold" : "normal");
       doc.setTextColor(color);
-      const lines = doc.splitTextToSize(text, maxW - indent);
-      lines.forEach(line => {
+      const wrapped = doc.splitTextToSize(text, maxW - indent);
+      wrapped.forEach(line => {
         checkPage();
         doc.text(line, margin + indent, y);
         y += fontSize * 1.45;
       });
     }
 
-    // title
-    writeText("Session Summary", { fontSize: 22, bold: true });
+    writeText(title, { fontSize: 22, bold: true });
     y += 4;
     if (tags?.length) writeText(`Topics: ${tags.join(", ")}`, { fontSize: 10, color: "#78716c" });
-    writeText(
-      `${clusters.length} cluster${clusters.length !== 1 ? "s" : ""} · ${submissionCount} total submission${submissionCount !== 1 ? "s" : ""}`,
-      { fontSize: 10, color: "#78716c" }
-    );
+    writeText(countLine, { fontSize: 10, color: "#78716c" });
     y += 16;
 
     clusters.forEach((cluster, i) => {
-      const topQuestions = [...(cluster.questions ?? [])]
-        .sort((a, b) => (b.upvoteCount ?? 0) - (a.upvoteCount ?? 0))
-        .slice(0, 5);
-
       checkPage(40);
-      // cluster number circle approximation, just bold number + query
       writeText(`${i + 1}. ${cluster.representative_query}`, { fontSize: 13, bold: true });
-      writeText(`${cluster.submission_count} submission${cluster.submission_count !== 1 ? "s" : ""}`, { fontSize: 9, color: "#a8a29e" });
+      writeText(plural(cluster.submission_count, "submission"), { fontSize: 9, color: "#a8a29e" });
       y += 6;
 
       if (answers[cluster.id]) {
@@ -111,10 +123,12 @@ export default function SummaryView({ clusters, answers, tags, submissionCount }
         y += 4;
       }
 
-      if (topQuestions.length) {
+      const top = topQuestionsOf(cluster);
+      if (top.length) {
         writeText("Top questions", { fontSize: 10, bold: true, color: "#44403c" });
-        topQuestions.forEach(q => {
-          const votes = q.upvoteCount > 0 ? `  ▲ ${q.upvoteCount}` : "";
+        top.forEach(q => {
+          // the built-in PDF font cannot draw the triangle glyph, so spell the votes out
+          const votes = q.upvoteCount > 0 ? `  (${plural(q.upvoteCount, "vote")})` : "";
           writeText(`• ${q.text}${votes}`, { fontSize: 10, color: "#57534e", indent: 8 });
         });
         y += 4;
@@ -127,7 +141,6 @@ export default function SummaryView({ clusters, answers, tags, submissionCount }
       }
 
       y += 16;
-      // divider
       checkPage();
       doc.setDrawColor("#e5e4e1");
       doc.line(margin, y, pageW - margin, y);
@@ -140,15 +153,13 @@ export default function SummaryView({ clusters, answers, tags, submissionCount }
   return (
     <div className="sv-root">
       <div className="sv-header">
-        <div className="sv-title">Session Summary</div>
+        <div className="sv-title">{title}</div>
         {tags?.length > 0 && (
           <div className="sv-tags">
             {tags.map(t => <span key={t} className="sv-tag">{t}</span>)}
           </div>
         )}
-        <div className="sv-meta">
-          {clusters.length} cluster{clusters.length !== 1 ? "s" : ""} · {submissionCount} total submission{submissionCount !== 1 ? "s" : ""}
-        </div>
+        <div className="sv-meta">{countLine}</div>
         <div className="sv-download-row">
           <button className="sv-download-btn" onClick={downloadMarkdown}>
             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -166,12 +177,10 @@ export default function SummaryView({ clusters, answers, tags, submissionCount }
           </button>
         </div>
       </div>
-      {/* rest of your clusters JSX unchanged */}
+
       <div className="sv-clusters">
         {clusters.map((cluster, i) => {
-          const topQuestions = [...(cluster.questions ?? [])]
-            .sort((a, b) => (b.upvoteCount ?? 0) - (a.upvoteCount ?? 0))
-            .slice(0, 5);
+          const top = topQuestionsOf(cluster);
 
           return (
             <div key={cluster.id} className="sv-cluster">
@@ -179,9 +188,7 @@ export default function SummaryView({ clusters, answers, tags, submissionCount }
                 <span className="sv-cluster-num">{i + 1}</span>
                 <div className="sv-cluster-info">
                   <div className="sv-cluster-query">{cluster.representative_query}</div>
-                  <div className="sv-cluster-meta">
-                    {cluster.submission_count} submission{cluster.submission_count !== 1 ? "s" : ""}
-                  </div>
+                  <div className="sv-cluster-meta">{plural(cluster.submission_count, "submission")}</div>
                 </div>
               </div>
               {answers[cluster.id] && (
@@ -200,11 +207,11 @@ export default function SummaryView({ clusters, answers, tags, submissionCount }
                   </ul>
                 </div>
               )}
-              {topQuestions.length > 0 && (
+              {top.length > 0 && (
                 <div className="sv-questions">
                   <div className="sv-questions-label">Top questions</div>
                   <ul className="sv-questions-list">
-                    {topQuestions.map((q, qi) => (
+                    {top.map((q, qi) => (
                       <li key={qi} className="sv-question-item">
                         <span className="sv-question-text">{q.text}</span>
                         {q.upvoteCount > 0 && <span className="sv-upvote">▲ {q.upvoteCount}</span>}

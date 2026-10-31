@@ -18,11 +18,16 @@ export default function ParticipantInput({
   const remaining = MAX_CHARS - text.length;
   const nearLimit = remaining <= 80;
 
-  function handleSubmit() {
+  async function handleSubmit() {
     const trimmed = text.trim();
-    if (!trimmed || !isOpen) return;
-    onSubmit(trimmed);
-    setText("");
+    if (!trimmed || !isOpen || submitLoading) return;
+    try {
+      // return false from onSubmit on failure to keep the draft
+      const ok = await onSubmit(trimmed);
+      if (ok !== false) setText("");
+    } catch {
+      // keep the draft so the person can retry
+    }
   }
 
   function handleKeyDown(e) {
@@ -62,7 +67,7 @@ export default function ParticipantInput({
             />
             <div className="pd-textarea-footer">
               <span className={`pd-charcount ${nearLimit ? "pd-charcount--warn" : ""}`}>
-                {remaining} remaining
+                {remaining} remaining · Ctrl+Enter to submit
               </span>
               <button
                 className="pd-btn-primary"
@@ -94,6 +99,7 @@ export default function ParticipantInput({
                     className="pd-delete-btn"
                     onClick={() => onDelete(s.id)}
                     title="Delete"
+                    aria-label="Delete this submission"
                   >×</button>
                 )}
               </li>

@@ -244,7 +244,7 @@ function NewSessionModal({ onStart, onClose }) {
             checked={encrypted}
             onChange={e => setEncrypted(e.target.checked)}
           />{' '}
-          End-to-end encrypted <span className="pv-field-optional">(server only sees ciphertext; clustering not available yet)</span>
+          End-to-end encrypted <span className="pv-field-optional">(server only sees ciphertext; questions are clustered in your browser)</span>
         </label>
         <button className="pv-btn-create pv-btn-create--modal" onClick={handleStart}>
           Create session →
