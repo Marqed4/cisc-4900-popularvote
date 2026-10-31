@@ -9,6 +9,7 @@ const PHASE_MAP = {
   OPEN:       ["sb-phase-open",    "Open"],
   CLOSED:     ["sb-phase-closed",  "Closed"],
   CLUSTERING: ["sb-phase-cluster", "Clustering"],
+  EXPANDING:  ["sb-phase-expanding", "Round 2"],
   RESULTS:    ["sb-phase-results", "Results"],
   ENDED:      ["sb-phase-ended",   "Ended"],
 };
@@ -22,7 +23,8 @@ function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso);
   const now = new Date();
-  const diffDays = Math.floor((now - d) / 86400000);
+  const startOf = x => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  const diffDays = Math.round((startOf(now) - startOf(d)) / 86400000);
   if (diffDays === 0) return "Today";
   if (diffDays === 1) return "Yesterday";
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -48,9 +50,7 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
           .eq("dismissed", false)
           .order("saved_at", { ascending: false });
 
-        console.log('user id:', user.id);
-        console.log('userSessions:', userSessions);
-        console.log('error:', error);
+        if (error) throw error;
 
         if (!userSessions?.length) { setSessions([]); setLoading(false); return; }
 
@@ -97,11 +97,12 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
     setSessions(prev => prev.filter(s => s.code !== code));
 
     if (user) {
-      await supabase
+      const { error } = await supabase
         .from("user_sessions")
         .update({ dismissed: true })
         .eq("user_id", user.id)
         .eq("session_code", code);
+      if (error) loadSessions(); // roll back the optimistic removal
     } else {
       const created = JSON.parse(localStorage.getItem(MY_SESSIONS_KEY) ?? "[]");
       const joined  = JSON.parse(localStorage.getItem(JOINED_KEY) ?? "[]");
@@ -114,10 +115,10 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
     <>
       {open && <div className="sb-backdrop" onClick={onClose} />}
 
-      <aside className={`sb-sidebar ${open ? "sb-sidebar--open" : ""}`}>
+      <aside className={`sb-sidebar ${open ? "sb-sidebar--open" : ""}`} aria-hidden={!open}>
         <div className="sb-header">
           <span className="sb-title">History</span>
-          <button className="sb-close-btn" onClick={onClose} title="Close">×</button>
+          <button className="sb-close-btn" onClick={onClose} title="Close" aria-label="Close history">×</button>
         </div>
 
         <div className="sb-body">
@@ -133,7 +134,16 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
               <div
                 key={s.code}
                 className="sb-item"
+                tabIndex={0}
                 onClick={() => { onNavigate(s.role, s.code); onClose(); }}
+                onKeyDown={e => {
+                  if (e.target !== e.currentTarget) return;
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    onNavigate(s.role, s.code);
+                    onClose();
+                  }
+                }}
               >
                 <div className="sb-item-content">
                   <div className="sb-item-topic">
@@ -149,6 +159,7 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
                 <button
                   className="sb-dismiss"
                   title="Remove from history"
+                  aria-label="Remove from history"
                   onClick={e => { e.stopPropagation(); dismiss(s.code); }}
                 >
                   ×

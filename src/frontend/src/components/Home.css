@@ -1,20 +1,12 @@
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Oswald:wght@500;600;700&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Bebas+Neue&family=Oswald:wght@500;600;700&family=DM+Mono:wght@400;500&display=swap');
 
-/* Rules Gothic Condensed is a licensed font. Put the woff2 in public/fonts/ (see README). Oswald is the fallback. */
-@font-face {
-  font-family: 'Rules Gothic Condensed';
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-  src: local('Rules Gothic Condensed Bold'), url('/fonts/RulesGothicCondensed-Bold.woff2') format('woff2');
-}
 
 
 :root {
   --font-sans:    'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-serif:   var(--font-sans);
   --font-mono:    'DM Mono', ui-monospace, monospace;
-  --font-display: 'Rules Gothic Condensed', 'Oswald', 'Arial Narrow', sans-serif;
+  --font-display: 'Bebas Neue', 'Oswald', 'Arial Narrow', sans-serif;
   --bg:           #f5f6f8;
   --surface:      #ffffff;
   --surface-sub:  #eef0f3;
@@ -579,3 +571,69 @@ body { font-feature-settings: "cv11", "ss01"; letter-spacing: -0.005em; }
 .pv-headline { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; font-size: clamp(3.4rem, 9vw, 5.6rem); line-height: 0.98; }
 .pv-wordmark-text { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; font-size: 1.25rem;  }
 .pv-modal h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; font-size: 1.7rem;  }
+
+
+/* How it works flow */
+.pv-how-modal { max-width: 520px; }
+
+.pv-flow {
+  list-style: none;
+  margin: 1.25rem 0 1.5rem;
+  padding: 0;
+  position: relative;
+}
+.pv-flow::before {
+  content: "";
+  position: absolute;
+  left: 13px;
+  top: 14px;
+  bottom: 14px;
+  width: 2px;
+  background: var(--border-str);
+}
+.pv-flow-step {
+  display: flex;
+  gap: 0.9rem;
+  position: relative;
+  padding-bottom: 1.1rem;
+}
+.pv-flow-step:last-child { padding-bottom: 0; }
+
+.pv-flow-num {
+  flex: 0 0 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: var(--accent);
+  color: var(--bg);
+  position: relative;
+  z-index: 1;
+}
+.pv-flow-content { flex: 1; min-width: 0; }
+.pv-flow-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+.pv-modal .pv-flow-head h3 { margin: 0; font-size: 0.98rem; }
+.pv-modal .pv-flow-content p {
+  margin: 0.2rem 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.pv-flow-role {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+.pv-flow-role--host         { background: var(--blue-bg);    color: var(--blue);  border-color: var(--blue-bd); }
+.pv-flow-role--participants { background: var(--green-bg);   color: var(--green); border-color: var(--green-bd); }
+.pv-flow-role--everyone     { background: var(--surface-sub); color: var(--text-2); border-color: var(--border-str); }

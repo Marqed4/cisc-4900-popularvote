@@ -1,0 +1,272 @@
+/* ==========================================================================
+   foil-theme.css
+   Colour mapping taken from night_Foil.jpg, applied to buttons and trims.
+   Typeface: Bebas Neue (display + solid buttons).
+
+   LOAD ORDER: import this AFTER every other stylesheet (e.g. in main.jsx,
+   after `import App`). It overrides by order, not by !important.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Foil scale (sampled from the image; "derived" = interpolated)
+   -------------------------------------------------------------------------- */
+:root {
+  --foil-950: #230e20;   /* sampled  deep plum shadow   */
+  --foil-900: #391f30;   /* sampled                     */
+  --foil-800: #562637;   /* sampled  wine               */
+  --foil-700: #6e3548;   /* derived                     */
+  --foil-600: #834157;   /* sampled  crimson rose       */
+  --foil-500: #9b647d;   /* sampled  mauve (dominant)   */
+  --foil-400: #c28aa4;   /* derived                     */
+  --foil-300: #deb6c8;   /* sampled  pink highlight     */
+  --foil-100: #f6e9ef;   /* derived  tint               */
+
+  --btn-font:   var(--font-display);
+  --btn-radius: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Semantic tokens: light
+   -------------------------------------------------------------------------- */
+:root {
+  --accent:          #834157;
+  --on-accent:       #ffffff;
+  --accent-soft:     rgba(131, 65, 87, 0.08);
+  --accent-soft-str: rgba(131, 65, 87, 0.16);
+  --trim:            rgba(131, 65, 87, 0.34);   /* outline buttons, dividers */
+  --trim-soft:       rgba(131, 65, 87, 0.16);   /* glass card edges          */
+  --focus-ring:      rgba(131, 65, 87, 0.24);
+
+  --border:          #e8dde2;
+  --border-str:      #d2bfc8;
+
+  --btn-solid:       linear-gradient(180deg, #8f4d63 0%, #783a4f 100%);
+  --btn-solid-edge:  #6e3548;
+  --btn-solid-hl:    rgba(255, 255, 255, 0.22);
+
+  --btn-alt-bg:      #562637;                   /* plum "secondary solid" */
+  --btn-alt-fg:      #f6e9ef;
+}
+
+/* --------------------------------------------------------------------------
+   3. Semantic tokens: dark
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  --accent:          #deb6c8;
+  --on-accent:       #230e20;
+  --accent-soft:     rgba(222, 182, 200, 0.10);
+  --accent-soft-str: rgba(222, 182, 200, 0.20);
+  --trim:            rgba(222, 182, 200, 0.38);
+  --trim-soft:       rgba(222, 182, 200, 0.16);
+  --focus-ring:      rgba(222, 182, 200, 0.30);
+
+  --border:          #302630;
+  --border-str:      #4a3a46;
+
+  --btn-solid:       linear-gradient(180deg, #ecc6d6 0%, #d3a0b8 100%);
+  --btn-solid-edge:  #f3d6e2;
+  --btn-solid-hl:    rgba(255, 255, 255, 0.45);
+
+  --btn-alt-bg:      #653b52;
+  --btn-alt-fg:      #f6e9ef;
+}
+
+/* --------------------------------------------------------------------------
+   4. Display font: Bebas Neue only ships one weight (400).
+      Overrides the font-weight: 700 in each "display font" block.
+   -------------------------------------------------------------------------- */
+.pv-headline,
+.pv-wordmark-text,
+.pv-modal h2,
+.pd-header-label,
+.hd-header-label,
+.pd-card-title:not(.pd-card-title--sm),
+.pd-session-title,
+.pd-waiting-title,
+.pd-empty-title,
+.hd-session-title,
+.hd-clustering-title,
+.hd-waiting-title,
+.sb-title,
+.am-title,
+.sv-title {
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+.pv-headline { letter-spacing: 0.02em; }
+
+/* --------------------------------------------------------------------------
+   5. Solid buttons (primary)
+   -------------------------------------------------------------------------- */
+:is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+    .am-magic-btn, .chat-send-btn):not(:disabled):not(.hd-btn-expand):not(.hd-btn-end) {
+  background: var(--btn-solid);
+  color: var(--on-accent);
+  border: 1px solid var(--btn-solid-edge);
+  box-shadow: inset 0 1px 0 var(--btn-solid-hl), 0 1px 3px rgba(0, 0, 0, 0.28);
+  text-shadow: none;
+  transition: filter 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+:is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+    .am-magic-btn, .chat-send-btn):not(:disabled):not(.hd-btn-expand):not(.hd-btn-end):hover {
+  background: var(--btn-solid);
+  filter: brightness(1.07);
+  opacity: 1;
+}
+:is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+    .am-magic-btn, .chat-send-btn):not(:disabled):not(.hd-btn-expand):not(.hd-btn-end):active {
+  filter: brightness(0.94);
+  transform: translateY(1px);
+}
+
+/* Bebas on every solid button, including Expand and End */
+:is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+    .hd-btn-end, .hd-btn-expand, .am-magic-btn, .chat-send-btn) {
+  font-family: var(--btn-font);
+  font-weight: 400;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+}
+.pv-btn-create { font-size: 1.45rem; padding: 0.8rem 1.5rem; border-radius: 14px; }
+.hd-btn-save,
+.chat-send-btn { padding: 0.4rem 1.1rem; border-radius: var(--btn-radius); cursor: pointer; }
+.chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Expand: plum secondary-solid so it reads as a sibling, not a rival */
+.hd-btn-expand:not(:disabled) {
+  background: var(--btn-alt-bg);
+  color: var(--btn-alt-fg);
+  border: 1px solid var(--trim);
+}
+.hd-btn-expand:hover:not(:disabled) { filter: brightness(1.12); opacity: 1; }
+
+/* End / Delete stay red: destructive must not read as "brand" */
+.hd-btn-end { font-size: 1.15rem; }
+
+/* --------------------------------------------------------------------------
+   6. Join button on the hero (glass, foil-edged)
+   -------------------------------------------------------------------------- */
+.pv-btn-join {
+  font-family: var(--btn-font);
+  font-weight: 400;
+  font-size: 1.25rem;
+  letter-spacing: 0.06em;
+  border: 1.5px solid var(--foil-300);
+  background: rgba(35, 14, 32, 0.5);
+  color: #fff;
+}
+.pv-btn-join:hover:not(:disabled) {
+  background: rgba(86, 38, 55, 0.7);
+  border-color: var(--foil-100);
+}
+.pv-code-input:focus,
+.pv-link-input:focus { border-color: var(--foil-300); }
+.pv-mode-btn.active { text-decoration-color: var(--foil-300); text-underline-offset: 4px; }
+
+/* --------------------------------------------------------------------------
+   7. Outline buttons (secondary)
+   -------------------------------------------------------------------------- */
+:is(.pd-btn-ghost, .hd-btn-ghost, .hd-btn-cancel, .am-google-btn,
+    .sv-download-btn, .sb-signin-btn, .hd-cluster-toggle) {
+  border: 1px solid var(--trim);
+  color: var(--text);
+}
+:is(.pd-btn-ghost, .hd-btn-ghost, .hd-btn-cancel, .am-google-btn,
+    .sv-download-btn, .sb-signin-btn, .hd-cluster-toggle):hover:not(:disabled) {
+  background: var(--accent-soft-str);
+  border-color: var(--accent);
+  color: var(--text);
+}
+:is(.pd-btn-ghost, .hd-btn-ghost, .hd-btn-cancel, .sv-download-btn):disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Dashed "add / edit" buttons */
+:is(.pd-add-q-btn, .hd-btn-edit-answer) {
+  border: 1px dashed var(--trim);
+  color: var(--text-2);
+}
+:is(.pd-add-q-btn, .hd-btn-edit-answer):hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.hd-answer-display.no-answer { border-color: var(--trim); }
+
+/* --------------------------------------------------------------------------
+   8. Pills, chips, toggles, selected states
+   -------------------------------------------------------------------------- */
+.pd-upvote-btn { border-color: var(--trim); }
+.pd-upvote-btn:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.pd-upvote-btn.pd-upvote-btn--voted,
+.pd-upvote-btn--voted:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.pd-followup-chip { border-color: var(--trim); }
+.pd-followup-chip:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.pd-followup-chip.pd-followup-chip--done { border-color: var(--green-bd); }
+
+.hd-sort-btn.hd-sort-btn--active { background: var(--accent); color: var(--on-accent); }
+
+.hd-preview-item:hover { border-color: var(--trim); }
+.hd-preview-item.selected { border-color: var(--accent); background: var(--accent-soft-str); }
+.hd-preview-item.selected .hd-preview-check { color: var(--accent); }
+
+.pv-bg-option.active { border-color: var(--accent); }
+
+.hd-tag,
+.hd-tag-input-row { border-color: var(--trim); }
+.hd-tag-add-btn { border-left-color: var(--trim); }
+.hd-tag-add-btn:hover { background: var(--accent-soft-str); color: var(--text); }
+
+/* Avatar + numbered badges sit on --accent, so their text must flip with it */
+.sb-avatar,
+.sv-cluster-num { background: var(--accent); color: var(--on-accent); }
+
+/* --------------------------------------------------------------------------
+   9. Icon buttons and header controls
+   -------------------------------------------------------------------------- */
+.pv-nav-btn:hover,
+.pv-nav-icon-btn:hover,
+.pv-nav-hamburger:hover,
+.pd-hamburger:hover,
+.hd-hamburger:hover,
+.pd-header .pv-nav-icon-btn:hover,
+.hd-header .pv-nav-icon-btn:hover { background: var(--accent-soft-str); }
+
+.pv-nav-hamburger:hover span { background: var(--foil-100); }
+.pv-nav-btn:hover,
+.pv-nav-icon-btn:hover { color: var(--foil-100); }
+
+/* --------------------------------------------------------------------------
+   10. Trims: edges, dividers, focus
+   -------------------------------------------------------------------------- */
+[data-theme] :is(.pd-card, .hd-cluster, .sv-cluster) { border-color: var(--trim-soft); }
+[data-theme] :is(.hd-session-context, .hd-sidebar-shell) { border-color: var(--trim-soft); }
+.pv-nav { border-bottom-color: rgba(222, 182, 200, 0.22); }
+.hd-expansion { border-top-color: var(--trim); }
+.hd-manual-input { border-left-color: var(--accent); }
+
+.pv-field-input:focus,
+.hd-answer-textarea:focus,
+.hd-notes-textarea:focus,
+.hd-manual-input:focus,
+.am-email-input:focus { border-color: var(--accent); }
+
+::selection { background: var(--accent-soft-str); }
+
+/* --------------------------------------------------------------------------
+   11. Chat (was using variables that do not exist elsewhere in the app)
+   -------------------------------------------------------------------------- */
+.chat-root { --border-radius-lg: 14px; --border-radius-md: 10px; }
+.chat-bubble--user      { background: var(--accent-soft-str); color: var(--text); border: 1px solid var(--trim-soft); }
+.chat-bubble--assistant { background: var(--surface-sub);     color: var(--text); }
+.chat-thinking          { color: var(--text-3); }
+.chat-input-bar         { border-top: 1px solid var(--border); }
+.chat-textarea          { background: var(--surface-sub); color: var(--text); border: 1px solid var(--border-str); font-family: var(--font-sans); }
+.chat-textarea:focus    { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }

@@ -87,7 +87,7 @@
   transition: border-color 0.15s, box-shadow 0.15s;
   line-height: 1.6;
 }
-.pd-textarea:focus       { border-color: var(--text); box-shadow: 0 0 0 3px var(--focus-ring); }
+.pd-textarea:focus       { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
 .pd-textarea::placeholder { color: var(--text-3); }
 .pd-textarea:disabled    { color: var(--text-3); cursor: not-allowed; }
 .pd-textarea--sm         { margin-top: 0.625rem; }
@@ -107,9 +107,9 @@
 .pd-btn-primary {
   font-family: var(--font-serif);
   font-size: 0.95rem;
-  font-weight: 600;
-  background: var(--text);
-  color: var(--bg);
+  font-weight: 500;
+  background: var(--accent);
+  color: #fff;
   border: none;
   border-radius: 10px;
   padding: 0.45rem 1.25rem;
@@ -186,9 +186,6 @@
 @media (max-width: 640px) {
   .pd-card { padding: 1.125rem 1.25rem; }
 }
-.pd-textarea:focus { border-color: var(--accent); }
-.pd-btn-primary { background: var(--accent); color: #fff; font-weight: 500; }
-.pd-btn-primary:disabled { background: var(--border); color: var(--text-3); }
 
 /* display font */
 .pd-card-title:not(.pd-card-title--sm) { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; font-size: 1.4rem;  }

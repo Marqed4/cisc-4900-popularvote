@@ -85,6 +85,7 @@
 .pd-phase--open       { background: var(--green-bg);    color: var(--green); }
 .pd-phase--closed     { background: var(--surface-sub); color: var(--text-2); }
 .pd-phase--clustering { background: var(--blue-bg);     color: var(--blue); animation: pulse-badge 1.5s ease-in-out infinite; }
+.pd-phase--expanding  { background: rgba(234,88,12,0.12); color: #c2410c; animation: pulse-badge 1.5s ease-in-out infinite; }
 .pd-phase--results    { background: var(--blue-bg);     color: var(--blue); }
 .pd-phase--ended      { background: var(--surface-sub); color: var(--text-3); }
 
@@ -132,7 +133,7 @@
   color: var(--text-3);
 }
 
-.pv-nav-icon-btn {
+.pd-header .pv-nav-icon-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -143,9 +144,9 @@
   align-items: center;
   justify-content: center;
 }
-.pv-nav-icon-btn:hover         { background: var(--surface-sub); }
-[data-theme="light"] .pv-nav-icon-btn { color: #14171c; }
-[data-theme="dark"]  .pv-nav-icon-btn { color: #e5e3e0; }
+.pd-header .pv-nav-icon-btn:hover         { background: var(--surface-sub); }
+[data-theme="light"] .pd-header .pv-nav-icon-btn { color: #14171c; }
+[data-theme="dark"]  .pd-header .pv-nav-icon-btn { color: #e5e3e0; }
 
 @media (max-width: 640px) {
   .pd-header      { padding: 0 1rem; }

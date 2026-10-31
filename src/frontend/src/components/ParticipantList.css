@@ -13,7 +13,7 @@
   gap: 0.75rem;
   transition: background 0.12s;
 }
-.hd-participant-row:hover { background: #f1f3f6; }
+.hd-participant-row:hover { background: var(--surface-sub); }
 
 .hd-participant-id {
   display: flex;
@@ -62,7 +62,6 @@
   border-radius: 999px;
   font-family: var(--font-sans);
   font-size: 0.75rem;
-  color: var(--text-3);
   cursor: pointer;
   padding: 2px 9px;
   flex-shrink: 0;
