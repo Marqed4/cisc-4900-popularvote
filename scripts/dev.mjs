@@ -1,9 +1,9 @@
-// Starts the Flask backend and the Vite frontend together for local dev.
-// Used by the root `npm run dev`. Ctrl+C stops both.
+// starts Flask and Vite together so `npm run dev` is the only thing you have to remember.
+// Ctrl+C stops both... they go down together, which is nicer than most things.
 //
-// Python is picked in this order: $PYTHON, a repo .venv, then every `python`/`python3`
-// on PATH. The first one that can import the backend's packages wins, so a stray
-// Python without Flask (e.g. MSYS) earlier on PATH doesn't break startup.
+// finding python is the annoying part. it tries $PYTHON, then a repo .venv, then every
+// python on PATH, and the first one that can actually import the backend's packages wins.
+// a python with no Flask on it (hi, MSYS) sitting early on PATH shouldn't ruin your night.
 import { spawn, spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';

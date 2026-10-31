@@ -56,7 +56,12 @@ async function migrateLocalSessions(userId) {
   }
 }
 
+// The root of the app and its whole router. there's no react-router, just one piece of state:
+// view. null means Home, {role: "host"} mounts Host.jsx, {role: "participant"} mounts
+// Participant.jsx. Home calls handleNavigate to pick one, and each screen's onBack sets view
+// back to null. everything else in here (theme, sign-in, sidebar) wraps around that.
 export default function App() {
+  // which screen is showing: null (Home) or { role, code, ...meta }
   const [view, setView]         = useState(null);
   const [user, setUser]         = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -71,9 +76,9 @@ export default function App() {
   // Clean up removed feature keys so old localStorage values don't linger
   useEffect(() => { localStorage.removeItem("pv-glass"); localStorage.removeItem("pv-sound"); }, []);
 
-  // Opt-in privacy setting: wipe everything this site saved (history, theme, encryption
-  // room keys, sign-in) when the page is closed. pagehide also fires on refresh, so a
-  // refresh clears it too. Only the setting itself is kept so it stays on.
+  // opt-in: when the page goes away, take everything this site saved with it. history, theme,
+  // room keys, the sign-in... all of it. pagehide fires on refresh too, the browser can't
+  // tell leaving from staying, so a refresh clears it as well. only the setting survives.
   useEffect(() => {
     localStorage.setItem(CLEAR_ON_EXIT_KEY, String(clearOnExit));
     if (!clearOnExit) return;
@@ -82,7 +87,7 @@ export default function App() {
         localStorage.clear();
         localStorage.setItem(CLEAR_ON_EXIT_KEY, "true");
       } catch {
-        // storage blocked (private mode etc), nothing to clear
+        // storage is blocked (private mode, usually), so there's nothing here to clear
       }
     }
     window.addEventListener("pagehide", flush);
@@ -121,6 +126,8 @@ export default function App() {
     await supabase.auth.signOut();
   }
 
+  // sign-in plumbing. restore whoever was signed in, then listen for changes. a fresh sign-in
+  // closes the modal and moves any anonymous history (localStorage) over to the account.
   useEffect(() => {
     // restore session on page load
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -172,11 +179,16 @@ export default function App() {
 
   }
 
+  // the one door into a session. Home calls this after creating (host) or joining (participant)
+  // a room, and the Sidebar calls it when you reopen one from history. remember the room first,
+  // then flip view, which is what actually swaps the screen. "NEW" is a host room that doesn't
+  // have a code yet, so there's nothing to remember.
   function handleNavigate(role, code, meta = {}) {
     if (code && code !== "NEW") saveSession(code, role);
     setView({ role, code, ...meta });
   }
 
+  // props every screen gets, so the theme survives moving between them
   const themeProps = {
     bgKey, darkMode,
     onToggleDark: handleToggleDark,
@@ -196,6 +208,8 @@ export default function App() {
     />
   );
 
+  // the render ladder: host screen, participant screen, otherwise Home. each one carries the
+  // same sidebar and sign-in modal alongside it.
   if (view?.role === "host") {
     return (
       <>
@@ -216,6 +230,7 @@ export default function App() {
     );
   }
 
+  // joined a room. Participant takes it from here: it loads the session and opens its own socket.
   if (view?.role === "participant") {
     return (
       <>
@@ -232,6 +247,7 @@ export default function App() {
     );
   }
 
+  // no view means nobody is in a room yet, so this is the landing page
   return (
     <>
       <Home

@@ -44,7 +44,16 @@ async function decryptClusters(clusters, encrypted, roomKey) {
   })));
 }
 
+// The participant's side of a session, start to finish. App.jsx mounts this once Home has
+// joined the room, then it reads roughly like this:
+//   1. load the saved room key, then fetch the session over REST (first paint)
+//   2. open a socket, say hello, and let the server sync us (phase, clusters, curators)
+//   3. if the room is encrypted, trade public keys with the host to get the room key
+//   4. submit questions, upvote, follow up, all through REST while sockets push changes back
+//   5. the host moves the phase along and the render ladder at the bottom picks a screen
+// REST is the source of truth and the socket is the gossip. a 10 second poll covers the gaps.
 export default function Participant({ code, onBack, user, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg }) {
+  // phase mirrors the server: OPEN, CLOSED, CLUSTERING, RESULTS, EXPANDING, ENDED
   const [phase, setPhase] = useState("OPEN");
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -64,12 +73,14 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
   const socketRef = useRef(null);
   const socketIdRef = useRef(null);
 
-  // E2E state. The room key is saved in localStorage per session code, so a refresh
-  // doesn't need the host online to resend it.
+  // E2E state. the room key is saved per session code, so a refresh doesn't mean waiting
+  // around for the host to come back online and hand it over again.
   const keyPairRef = useRef(null);
   const roomKeyRef = useRef(null);
   const encryptedRef = useRef(false);
 
+  // Step 1, first load. the saved key has to be in the ref before fetchSession runs, otherwise
+  // an encrypted room paints as "key unavailable" for no good reason.
   useEffect(() => {
     (async () => {
       roomKeyRef.current = await loadRoomKey(code);
@@ -77,6 +88,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     })();
   }, []);
 
+  // Step 2, the socket. one connection per room code, closed again when we leave.
   useEffect(() => {
     if (!code) return;
 
@@ -84,11 +96,15 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     const socket = io(apiUrl || "http://localhost:2167");
     socketRef.current = socket;
 
+    // connected: remember our socket id (curator status is keyed on it) and ask to join the room.
+    // the server answers with session:sync.
     socket.on("connect", () => {
       socketIdRef.current = socket.id;
       socket.emit("join:room", { code, role: "participant" });
     });
 
+    // the server's reply to join:room. catches us up on phase, clusters and curators, and for
+    // encrypted rooms this is where step 3 starts: no room key yet means we announce our public key.
     socket.on("session:sync", async ({ clusters: syncClusters, phase: syncPhase, encrypted: syncEncrypted, curators: syncCurators }) => {
       setIsCurator((syncCurators ?? []).includes(socket.id));
       // E2E: send our public key so the host can hand us the room key.
@@ -115,11 +131,12 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       if (syncPhase) setPhase(syncPhase);
     });
 
+    // dropped and came back. we may have missed events while gone, so refetch everything.
     socket.on("reconnect", () => {
       fetchSession();
     });
 
-    // E2E: the host sent the room key wrapped for us, so unwrap it with their public key.
+    // E2E, step 3 finishing: the host sent the room key wrapped for us, so unwrap it with their public key.
     socket.on("room_key_distribute", async ({ encryptedRoomKey, publicKey }) => {
       try {
         roomKeyRef.current = await unwrapRoomKey(
@@ -134,9 +151,13 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       }
     });
 
+    // Step 5, the host drives the phase and we just follow along. these events arrive in
+    // roughly this order: closed, clustering, results, expanding, ended. sometimes it loops back.
     socket.on("submission:count", ({ count }) => setSubmissionCount(count));
     socket.on("session:closed",    () => setPhase("CLOSED"));
     socket.on("session:clustering",() => setPhase("CLUSTERING"));
+    // clustering finished. the clusters ride along in the event, decrypted here if the room is
+    // encrypted, and any answers the host already wrote get folded into the answers map.
     socket.on("session:results",   async ({ clusters }) => {
       const decrypted = await decryptClusters(clusters, encryptedRef.current, roomKeyRef.current);
       setClusters(decrypted);
@@ -147,8 +168,10 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       });
       setPhase("RESULTS");
     });
+    // round 2 begins. the prompts are optional inspiration shown above the input.
     socket.on("session:expanding", () => setPhase("EXPANDING"));
     socket.on("expansion:prompts", ({ prompts }) => setExpansionPrompts(prompts ?? []));
+    // suggested follow-up questions for a cluster, generated after the host answers it
     socket.on("cluster:followups", ({ clusterId, suggestions }) =>
       setFollowups(prev => ({ ...prev, [clusterId]: suggestions }))
     );
@@ -162,6 +185,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     socket.on("curator:promoted", ({ curators }) =>
       setIsCurator((curators ?? []).includes(socket.id))
     );
+    // someone upvoted. matched by question text, the only handle the server has, so everyone's
+    // counts move together.
     socket.on("cluster:upvote", ({ questionText, upvoteCount }) =>
       setClusters(prev => prev.map(c => ({
         ...c,
@@ -170,6 +195,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
         ),
       })))
     );
+    // a follow-up question landed in an existing cluster (ours or someone else's). decrypt it if
+    // needed and append it, no refetch required.
     socket.on("cluster:submission:added", async ({ clusterId, question, submissionCount }) => {
       let decryptedQuestion = question;
       if (encryptedRef.current) {
@@ -193,6 +220,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     return () => socket.disconnect();
   }, [code]);
 
+  // safety net: refetch every 10 seconds in case a socket event got lost on the way here
   useEffect(() => {
     if (!code || code === "NEW") return;
     const interval = setInterval(fetchSession, 10000);
@@ -201,6 +229,9 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
 
   const apiBase = import.meta.env.VITE_API_URL ?? "";
 
+  // GET /api/sessions/:code. runs on mount, on reconnect, after the room key arrives, and on the
+  // poll. replaces phase, clusters and answers wholesale, then (signed in only) restores "my
+  // questions" from Supabase so they follow the account across devices. loading ends here.
   async function fetchSession() {
     try {
       const res = await fetch(`${apiBase}/api/sessions/${code}`);
@@ -241,6 +272,9 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     }
   }
 
+  // Step 4, asking. triggered by ParticipantInput's submit button. encrypts if the room is
+  // encrypted, POSTs to /submit, then remembers the question locally (and in Supabase for signed
+  // in users). the server broadcasts submission:count, so nobody needs to be told here.
   async function submitQuestion(text) {
     setSubmitLoading(true);
     setError("");
@@ -278,6 +312,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     }
   }
 
+  // the little x on one of your own questions. deletes on the server first, then clears it from
+  // local storage and Supabase. the question was only ever yours to take back, I guess.
   async function deleteSubmission(submissionId) {
     try {
       await fetch(`${apiBase}/api/sessions/${code}/submit/${submissionId}`, { method: "DELETE" });
@@ -299,6 +335,9 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     }
   }
 
+  // a follow-up aimed at one specific cluster, from ParticipantCluster. same shape as
+  // submitQuestion but it hits the cluster's own endpoint, and the server then emits
+  // cluster:submission:added so every screen (ours included) gets the new question.
   async function submitToCluster(clusterId, text) {
     setError("");
     try {
@@ -332,7 +371,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     }
   }
 
-  // Curators answer clusters through the same endpoint the host uses.
+  // curators answer through the same endpoint the host does. the server doesn't check who's
+  // asking (issue #4), so for now the buttons are the only thing keeping people honest.
   async function saveClusterAnswer(clusterId, answer) {
     setError("");
     try {
@@ -350,6 +390,9 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     }
   }
 
+  // optimistic upvote toggle. flips the local state first so the button feels instant, tells the
+  // server (undo when it was already voted), and flips back if the request never lands. the real
+  // count comes back to everyone through cluster:upvote.
   async function upvoteQuestion(questionText) {
     const alreadyVoted = upvotes[questionText];
     setUpvotes(prev => ({ ...prev, [questionText]: !alreadyVoted }));
@@ -364,6 +407,9 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     }
   }
 
+  // derived values for the screens below. myTexts marks which questions are ours, and
+  // inClusterCount is how many of our questions the clustering actually placed (fuzzy text match,
+  // since clustering may rewrite a question a little).
   const myTexts = new Set(submissions.map(s => s.text));
   const inClusterCount = submissions.filter(s =>
     clusters.some(c => c.questions?.some(q => {
@@ -386,6 +432,10 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     inClusterCount,
   };
 
+  // Everything below is the render ladder: first matching phase wins, top to bottom.
+  // loading -> ENDED -> OPEN/CLOSED -> CLUSTERING -> RESULTS -> EXPANDING -> fallback.
+
+  // nothing fetched yet, just a spinner
   if (loading) {
     return (
       <div className="pd-root">
@@ -399,6 +449,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     );
   }
 
+  // the host ended it. read-only summary of every cluster and answer, the last page of the book.
   if (phase === "ENDED") {
     return (
       <div className="pd-root">
@@ -415,6 +466,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     );
   }
 
+  // round 1. OPEN takes questions, CLOSED shows the same screen with input disabled (the
+  // phase prop is what tells ParticipantInput which one it is) while the host decides what's next.
   if (phase === "OPEN" || phase === "CLOSED") {
     return (
       <div className="pd-root">
@@ -441,6 +494,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     );
   }
 
+  // the host pressed cluster. nothing to do but wait for session:results.
   if (phase === "CLUSTERING") {
     return (
       <div className="pd-root">
@@ -456,6 +510,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     );
   }
 
+  // clusters are out. we can still ask more (the input is forced to OPEN here), upvote questions,
+  // add follow-ups to a cluster, and, if promoted, answer clusters as a curator.
   if (phase === "RESULTS") {
     return (
       <div className="pd-root">
@@ -495,6 +551,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     );
   }
 
+  // round 2. the host answered round 1 and asks for follow-ups. inClusterCount is 0 on purpose,
+  // new questions here haven't been clustered yet.
   if (phase === "EXPANDING") {
     return (
       <div className="pd-root">

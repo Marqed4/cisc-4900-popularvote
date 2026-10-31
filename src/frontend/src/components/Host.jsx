@@ -12,8 +12,17 @@ import HostSidebar from "./HostSidebar.jsx";
 import ParticipantList from "./ParticipantList";
 import "./HostLayout.css";
 
+// The host's side of a room, start to finish. rough order of events:
+//   1. mount: code "NEW" creates a room (createSession), anything else loads an old one (fetchSession)
+//   2. the socket joins the room as host and keeps state fresh, polling is the backup plan
+//   3. phases only ever move one way, mostly: OPEN -> CLOSED -> CLUSTERING -> RESULTS,
+//      then EXPANDING (second round) loops back to RESULTS, and ENDED is where it stops
+//   4. on encrypted rooms this browser holds the room key, so all the reading and
+//      clustering happens here and the server only ever passes ciphertext along
 export default function HostDashboard({ code: initialCode, initialTitle = '', initialDescription = '', initialEncrypted = false, onBack, onSessionCreated, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg }) {
-  // Core session state
+  // ====================== State ======================
+
+  // Core session state. phase mirrors the server's phase, the server wins any argument.
   const [phase, setPhase] = useState("OPEN");
   const [code, setCode] = useState(initialCode);
   const [title, setTitle] = useState(initialTitle);
@@ -45,11 +54,13 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   const [participants, setParticipants] = useState([]);
   const [curators, setCurators] = useState([]);
 
+  // socketRef holds the live connection for the emit-only actions. createdRef stops
+  // React's double-mount from making two rooms in dev, one is plenty.
   const socketRef  = useRef(null);
   const createdRef = useRef(false);
 
-  // E2E state. The room key is also saved in localStorage per session code so a
-  // refresh or server restart doesn't make old submissions unreadable (E2E-6).
+  // E2E state. the room key also lives in localStorage under the session code now, so a
+  // refresh or a server restart doesn't leave old submissions unreadable (E2E-6).
   const codeRef = useRef(initialCode);
   const encryptedRef = useRef(initialEncrypted);
   const hostKeysRef = useRef(null); // promise of { keyPair, publicKey, roomKey }
@@ -57,8 +68,9 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
 
   // ====================== E2E helpers ======================
 
-  // Makes the host's keypair the first time it's needed. The room key is reused from
-  // localStorage when this browser already has one for the session, otherwise generated.
+  // the keypair is made fresh whenever it's first needed. the room key is the one worth
+  // keeping: if this browser already saved one for the session we pick it back up, otherwise
+  // we make a new one and hold onto it. losing it means losing every question, so... yeah.
   function ensureHostKeys() {
     if (!hostKeysRef.current) {
       hostKeysRef.current = (async () => {
@@ -79,6 +91,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   }
 
   // Turns a stored submission ({ciphertext, nonce} JSON) back into readable text.
+  // every incoming submission passes through here, plaintext rooms just get it back untouched.
   async function readSubmission(sub) {
     if (!encryptedRef.current) return sub;
     try {
@@ -102,6 +115,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }
 
+  // the other direction: plain text in, a {ciphertext, nonce} JSON string out, ready to send.
   async function encryptField(value) {
     const { roomKey } = await ensureHostKeys();
     const { ciphertext, nonce } = await encryptText(roomKey, value);
@@ -121,6 +135,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     };
   }
 
+  // used only by triggerClustering on encrypted rooms: the clusters we built locally
+  // get scrambled here before they're posted to the server.
   async function encryptCluster(cluster) {
     return {
       representativeQuery: await encryptField(cluster.representativeQuery),
@@ -134,6 +150,11 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   // ====================== API & Session Management ======================
   // Defined BEFORE useEffects so closures can reference them safely.
 
+  // Step one for a brand new room. fired once by the mount effect when code is "NEW".
+  // posts the title/description/encrypted choice, takes the real code back, stashes the
+  // room key under that code if encrypted, tells App the code (so the URL updates), and
+  // remembers the code in localStorage so the sidebar can list it later. after this the
+  // code state changes, which is what wakes up the socket effect below.
   async function createSession() {
     setLoading(true);
     try {
@@ -167,8 +188,12 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }
 
-  // FIX: was using `initialCode` in the URL now uses the `code` state so
-  // polling after a NEW session is created hits the right endpoint.
+  // The catch-all refresh: pulls the whole room from the server and overwrites local state.
+  // runs on mount for existing rooms, after a socket reconnect, and every 10s from the
+  // polling effect. decrypts submissions and clusters on the way in, then rebuilds the
+  // per-cluster answer / selected-question / preview maps from what the server saved.
+  // takes the code as an argument because state may not have caught up yet.
+  // (uses the `code` state, not `initialCode`, so polling after a NEW room hits the right endpoint)
   async function fetchSession(sessionCode = code) {
     try {
       const res = await fetch(`${apiBase}/api/sessions/${sessionCode}`);
@@ -190,6 +215,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setClusters(await Promise.all((data.clusters ?? []).map(readCluster)));
       setCurators(data.curators ?? []);
 
+      // answers are keyed by cluster id, and by "<id>::followup" for the participant's
+      // follow-up answer, same convention saveAnswer splits apart again later.
       const savedAnswers = {};
       const savedSelected = {};
       const savedPreviews = {};
@@ -217,7 +244,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
 
   // ====================== Effects ======================
 
-  // Initialize session
+  // On mount: a new room gets created, an existing one gets loaded. runs once.
   useEffect(() => {
     if (initialCode === "NEW") {
       if (createdRef.current) return;
@@ -228,21 +255,27 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }, []);
 
-  // Socket connection and real-time listeners
+  // Socket connection and real-time listeners. waits for a real code, joins the room as
+  // host, then every server broadcast below nudges local state so the page follows the
+  // session without asking. the cleanup disconnects when the code changes or we unmount.
   useEffect(() => {
     if (!code || code === "NEW") return;
 
     const socket = io(import.meta.env.VITE_API_URL ?? "http://localhost:2167");
     socketRef.current = socket;
 
+    // -- joining and staying joined --
     socket.on("connect", () => {
       socket.emit("join:room", { code, role: "host" });
     });
 
+    // anything could have happened while we were gone, so reload the whole room
     socket.on("reconnect", () => {
       fetchSession(code);
     });
 
+    // -- submissions coming in (phase OPEN, and RESULTS/EXPANDING for late ones) --
+    // count is just the number, new carries the content, which we decrypt before showing
     socket.on("submission:count", ({ count }) => setSubmissionCount(count));
     socket.on("submission:new", async ({ id, content }) => {
       const sub = await readSubmission({ id, content });
@@ -265,6 +298,10 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       }
     });
 
+    // -- phase changes the server announces --
+    // CLOSED: submissions stopped. CLUSTERING: the grouping is running somewhere.
+    // RESULTS: clusters are ready, so we decrypt and show them. these also fire for
+    // this host's own actions, which is fine, setting the same phase twice hurts nobody.
     socket.on("session:closed", () => setPhase("CLOSED"));
     socket.on("session:clustering", () => setPhase("CLUSTERING"));
     socket.on("session:results", async ({ clusters, submissionsAtLastCluster }) => {
@@ -273,6 +310,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setPhase("RESULTS");
     });
 
+    // -- cluster activity once results exist --
+    // a participant upvoted a question, patch its count in place
     socket.on("cluster:upvote", ({ questionText, upvoteCount }) => {
       setClusters(prev =>
         prev.map(c => ({
@@ -284,6 +323,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       );
     });
 
+    // AI drafted answers from the host's notes, arrives right after results. they sit in
+    // suggestedAnswers until the host clicks "use suggestion", nothing is saved on its own.
     socket.on("cluster:suggestions", ({ suggestions }) => {
       setSuggestedAnswers(prev => {
         const next = { ...prev };
@@ -294,11 +335,14 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       });
     });
 
+    // ENDED is the last phase, the summary page takes over from here
     socket.on("session:ended", () => setPhase("ENDED"));
     socket.on("cluster:deleted", ({ clusterId }) =>
       setClusters(prev => prev.filter(c => c.id !== clusterId))
     );
 
+    // answers saved by the host (cluster:answered) or a participant's follow-up
+    // answer (cluster:followup:answered), same key scheme as fetchSession uses
     socket.on("cluster:answered", ({ clusterId, answer }) =>
       setAnswers(prev => ({ ...prev, [clusterId]: answer }))
     );
@@ -307,6 +351,9 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setAnswers(prev => ({ ...prev, [clusterId + "::followup"]: answer }))
     );
 
+    // -- who's in the room --
+    // the list is built from join/leave events, so someone who joined before the host
+    // connected only shows up in the count... that's a known gap, I guess.
     socket.on("participant:joined", ({ socketId, count }) => {
       setParticipantCount(count);
       setParticipants(prev => {
@@ -320,6 +367,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setParticipants(prev => prev.filter(p => p.socketId !== socketId));
     });
 
+    // a curator was promoted or demoted, update the badge on each participant
     socket.on("curator:promoted", ({ curators: newCurators }) => {
       setCurators(newCurators);
       setParticipants(prev =>
@@ -327,6 +375,9 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       );
     });
 
+    // -- second round (EXPANDING) --
+    // the server sends follow-up question previews per cluster, we store them and drop
+    // back to RESULTS so the host can pick which ones to ask the room
     socket.on("expansion:preview", ({ clusterPreviews }) => {
       console.log("[socket] expansion:preview received", { clusterPreviews });
       setExpansionPreviews(prev => {
@@ -341,6 +392,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setPhase("RESULTS");
     });
 
+    // a question was added straight into a cluster (see submitManualQuestion), so it
+    // skips the submissions list and lands in the cluster's questions, decrypted first
     socket.on("cluster:submission:added", async ({ clusterId, question, submissionCount }) => {
       console.log("[cluster:submission:added]", { clusterId, question, submissionCount });
       const decryptedQuestion = { ...question, text: await decryptField(question.text) };
@@ -356,13 +409,14 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       );
     });
 
-    // host triggered delete navigate away
+    // deleteSession() below emits host:delete_session, the server confirms with this,
+    // and we leave since there's no room left to look at
     socket.on("session:deleted", () => onBack());
 
     return () => socket.disconnect();
   }, [code]);
 
-  // Polling fallback
+  // Polling fallback. sockets drop quietly sometimes, so every 10s we reload the whole room anyway.
   useEffect(() => {
     if (!code || code === "NEW") return;
     const interval = setInterval(() => fetchSession(code), 10000);
@@ -378,7 +432,12 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   }, []);
 
   // ====================== Actions ======================
+  // The host's buttons, in the order a session usually uses them:
+  // close -> cluster -> answer -> (second round) -> end. each one calls the API and the
+  // socket broadcast above carries the news to everyone else.
 
+  // "Close submissions" button in the sidebar. OPEN -> CLOSED. the server also
+  // broadcasts session:closed so participants stop being able to submit.
   async function closeSubmissions() {
     setActionLoading(true);
     setError("");
@@ -393,6 +452,9 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }
 
+  // "Cluster" button (also the re-cluster button from RESULTS). CLOSED -> CLUSTERING -> RESULTS.
+  // two paths: encrypted rooms cluster here in the browser and post ciphertext, plain
+  // rooms just ask the server to do it. any failure drops back to CLOSED so it can be retried.
   async function triggerClustering() {
     if (submissionCount === 0) {
       setError("No submissions yet.");
@@ -438,6 +500,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }
 
+  // trash button on a cluster. removed locally right away, the server's cluster:deleted
+  // broadcast then tells the participants.
   async function deleteCluster(clusterId) {
     try {
       await fetch(`${apiBase}/api/sessions/${code}/clusters/${clusterId}`, { method: "DELETE" });
@@ -447,6 +511,9 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }
 
+  // host adds a question to a specific cluster by hand. encrypted rooms send ciphertext
+  // plus a nonce, same shape participants use. the state update comes back through
+  // cluster:submission:added, so there's nothing to set here except clearing the input.
   async function submitManualQuestion(clusterId, question) {
     try {
       let payload = { content: question };
@@ -466,6 +533,10 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }
 
+  // saves the host's answer to a cluster. the id is either a bare cluster id or
+  // "<id>::question", the second form goes to the same endpoint with ?question= so the
+  // server files it as a participant answer. answers are plaintext, even in encrypted
+  // rooms. the server then broadcasts cluster:answered (and drafts follow-up suggestions).
   async function saveAnswer(answerId) {
     const answer = answers[answerId] ?? "";
     const [clusterId, question] = answerId.includes("::")
@@ -488,6 +559,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }
 
+  // "End session". whatever phase we're in -> ENDED. the server sends everyone a summary
+  // through session:ended, and the room stops taking anything.
   async function endSession() {
     setActionLoading(true);
     try {
@@ -501,11 +574,15 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }
 
+  // goes over the socket, not REST. nothing changes here until the server answers
+  // with session:deleted, which is what sends us home.
   function deleteSession() {
     if (!socketRef.current) return;
     socketRef.current.emit("host:delete_session", { code });
   }
 
+  // "Open second round". RESULTS -> EXPANDING: the server generates follow-up previews and
+  // reopens submissions. expansion:preview arrives later and moves us back to RESULTS.
   async function openSecondRound() {
     setExpandLoading(true);
     setError("");
@@ -521,6 +598,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }
 
+  // promote or demote a participant from the list. the server flips it and the
+  // curator:promoted broadcast tells everyone, we also apply the answer locally.
   async function toggleCurator(socketId) {
     try {
       const res = await fetch(`${apiBase}/api/sessions/${code}/curators`, {
@@ -540,6 +619,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     }
   }
 
+  // tags steer the clustering, so they get saved whenever they change. fire and forget,
+  // a failure only gets logged.
   async function saveTags(updatedTags) {
     try {
       await fetch(`${apiBase}/api/sessions/${code}/tags`, {
@@ -554,6 +635,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
 
   // ====================== UI Handlers ======================
 
+  // Enter or comma in the tag box commits the tag, duplicates are ignored, then saveTags.
   function addTag(e) {
     if ((e.key === "Enter" || e.key === ",") && tagInput.trim()) {
       e.preventDefault();
@@ -573,6 +655,11 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     saveTags(updated);
   }
 
+  // ====================== Render ======================
+  // header up top, controls and participants on the left, the cluster list in the middle.
+  // HostList decides what to show based on phase, this component just feeds it.
+
+  // only true while createSession is waiting on the server
   if (loading) {
     return (
       <div className="hd-loading">
