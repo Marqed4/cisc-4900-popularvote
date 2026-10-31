@@ -121,3 +121,63 @@ class TestSaveClusters:
         assert inserted_rows[0]['answer'] == 'Because Y'
         assert inserted_rows[0]['upvote_count'] == 3
         assert result == [{'id': 'new-id', 'representative_query': 'Why X?'}]
+
+
+class TestRecordViewer:
+    def _setup(self, monkeypatch, data):
+        table_mock = MagicMock()
+        table_mock.upsert.return_value = _chain(data)
+        fake_supabase = MagicMock(table=MagicMock(return_value=table_mock))
+        monkeypatch.setattr(session_store, 'supabase', fake_supabase)
+        return fake_supabase, table_mock
+
+    def test_returns_true_for_a_new_device(self, monkeypatch):
+        fake_supabase, table_mock = self._setup(monkeypatch, [{'session_code': 'ABC123', 'device_id': 'd1'}])
+
+        assert session_store.record_viewer('ABC123', 'd1') is True
+        fake_supabase.table.assert_called_once_with('session_viewers')
+        table_mock.upsert.assert_called_once_with(
+            {'session_code': 'ABC123', 'device_id': 'd1'},
+            on_conflict='session_code,device_id',
+            ignore_duplicates=True,
+        )
+
+    def test_returns_false_when_the_device_was_already_counted(self, monkeypatch):
+        # ignore_duplicates makes a repeat insert return no row
+        self._setup(monkeypatch, [])
+
+        assert session_store.record_viewer('ABC123', 'd1') is False
+
+    def test_returns_false_when_no_data_comes_back(self, monkeypatch):
+        self._setup(monkeypatch, None)
+
+        assert session_store.record_viewer('ABC123', 'd1') is False
+
+    def test_database_errors_are_not_swallowed(self, monkeypatch):
+        table_mock = MagicMock()
+        table_mock.upsert.return_value.execute.side_effect = Exception('db down')
+        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
+
+        with pytest.raises(Exception, match='db down'):
+            session_store.record_viewer('ABC123', 'd1')
+
+
+class TestCountViewers:
+    def _setup(self, monkeypatch, count):
+        table_mock = MagicMock()
+        execute = table_mock.select.return_value.eq.return_value.limit.return_value.execute
+        execute.return_value = MagicMock(count=count)
+        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
+        return table_mock
+
+    def test_returns_the_exact_count_for_the_session(self, monkeypatch):
+        table_mock = self._setup(monkeypatch, 4)
+
+        assert session_store.count_viewers('ABC123') == 4
+        table_mock.select.assert_called_once_with('device_id', count='exact')
+        table_mock.select.return_value.eq.assert_called_once_with('session_code', 'ABC123')
+
+    def test_returns_zero_when_count_is_missing(self, monkeypatch):
+        self._setup(monkeypatch, None)
+
+        assert session_store.count_viewers('ABC123') == 0

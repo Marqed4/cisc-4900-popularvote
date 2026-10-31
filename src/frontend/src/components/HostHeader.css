@@ -119,7 +119,7 @@
   color: var(--text-3);
 }
 
-.pv-nav-icon-btn {
+.hd-header .pv-nav-icon-btn {
   background: none;
   border: none;
   cursor: pointer;
@@ -131,15 +131,15 @@
   justify-content: center;
 }
 
-.pv-nav-icon-btn:hover {
+.hd-header .pv-nav-icon-btn:hover {
   background: var(--surface-sub);
 }
 
-[data-theme="light"] .pv-nav-icon-btn {
+[data-theme="light"] .hd-header .pv-nav-icon-btn {
   color: #14171c;
 }
 
-[data-theme="dark"] .pv-nav-icon-btn {
+[data-theme="dark"] .hd-header .pv-nav-icon-btn {
   color: #e5e3e0;
 }
 

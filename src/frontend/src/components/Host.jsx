@@ -31,6 +31,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   const [tags, setTags] = useState([]);
   const [tagInput, setTagInput] = useState("");
   const [participantCount, setParticipantCount] = useState(0);
+  // unique devices that have ever joined as a participant. it only goes up.
+  const [viewerCount, setViewerCount] = useState(0);
   const [submissionCount, setSubmissionCount] = useState(0);
   const [submissionsAtLastCluster, setSubmissionsAtLastCluster] = useState(0);
   const [clusters, setClusters] = useState([]);
@@ -212,6 +214,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setSubmissionCount(data.submissionCount ?? 0);
       setSubmissionsAtLastCluster(data.submissionsAtLastCluster ?? 0);
       setParticipantCount(data.participantCount ?? 0);
+      // only trust it when the server sent a number, so the 10s poll never resets it to 0
+      if (typeof data.viewerCount === "number") setViewerCount(data.viewerCount);
       setClusters(await Promise.all((data.clusters ?? []).map(readCluster)));
       setCurators(data.curators ?? []);
 
@@ -272,6 +276,12 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     // anything could have happened while we were gone, so reload the whole room
     socket.on("reconnect", () => {
       fetchSession(code);
+    });
+
+    // the server answers our join:room with a snapshot. the host only needs the
+    // unique-device total from it, which covers everyone who joined before we connected.
+    socket.on("session:sync", ({ viewerCount: synced }) => {
+      if (typeof synced === "number") setViewerCount(synced);
     });
 
     // -- submissions coming in (phase OPEN, and RESULTS/EXPANDING for late ones) --
@@ -354,8 +364,9 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     // -- who's in the room --
     // the list is built from join/leave events, so someone who joined before the host
     // connected only shows up in the count... that's a known gap, I guess.
-    socket.on("participant:joined", ({ socketId, count }) => {
+    socket.on("participant:joined", ({ socketId, count, viewerCount: viewers }) => {
       setParticipantCount(count);
+      if (typeof viewers === "number") setViewerCount(viewers);
       setParticipants(prev => {
         if (prev.find(p => p.socketId === socketId)) return prev;
         return [...prev, { socketId, isCurator: false }];
@@ -673,6 +684,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       <HostHeader
         phase={phase}
         participantCount={participantCount}
+        viewerCount={viewerCount}
         submissionCount={submissionCount}
         onBack={onBack}
         onOpenSidebar={onOpenSidebar}
