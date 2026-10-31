@@ -1,50 +1,62 @@
-@import url('https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,700;1,400;1,500&family=DM+Mono:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=Oswald:wght@500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+/* Rules Gothic Condensed is a licensed font. Put the woff2 in public/fonts/ (see README). Oswald is the fallback. */
+@font-face {
+  font-family: 'Rules Gothic Condensed';
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  src: local('Rules Gothic Condensed Bold'), url('/fonts/RulesGothicCondensed-Bold.woff2') format('woff2');
+}
+
 
 :root {
-  --bg:           #f8f8f7;
+  --font-sans:    'Instrument Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-serif:   var(--font-sans);
+  --font-mono:    'DM Mono', ui-monospace, monospace;
+  --font-display: 'Rules Gothic Condensed', 'Oswald', 'Arial Narrow', sans-serif;
+  --bg:           #f5f6f8;
   --surface:      #ffffff;
-  --surface-sub:  #e8e6e3;
-  --border:       #e5e4e1;
-  --border-str:   #cccbc8;
-  --text:         #1c1917;
-  --text-2:       #57534e;
-  --text-3:       #a8a29e;
-  --accent:       #c2410c;
+  --surface-sub:  #eef0f3;
+  --border:       #e3e6ea;
+  --border-str:   #cdd2d9;
+  --text:         #14171c;
+  --text-2:       #4b5563;
+  --text-3:       #6b7280;
+  --accent:       #4f46e5;
   --green:        #15803d;
-  --green-bg:     #f0fdf4;
+  --green-bg:     #ecfdf3;
   --green-bd:     #bbf7d0;
-  --blue:         #1d4ed8;
-  --blue-bg:      #eff6ff;
-  --blue-bd:      #bfdbfe;
+  --blue:         #4338ca;
+  --blue-bg:      #eef2ff;
+  --blue-bd:      #c7d2fe;
   --red:          #dc2626;
-  --font-serif:   'EB Garamond', Georgia, serif;
-  --font-mono:    'DM Mono', monospace;
-  --sh-sm:        0 1px 2px rgba(0,0,0,0.05);
-  --sh-md:        0 4px 16px rgba(0,0,0,0.08);
-  --focus-ring:   rgba(28, 25, 23, 0.08);
-  --delete-hover-bg: rgba(220, 38, 38, 0.07);
+  --sh-sm:        0 1px 2px rgba(16,24,40,0.06);
+  --sh-md:        0 1px 2px rgba(16,24,40,0.04), 0 8px 24px rgba(16,24,40,0.08);
+  --focus-ring:   rgba(79, 70, 229, 0.22);
+  --delete-hover-bg: rgba(220, 38, 38, 0.08);
 }
 
 [data-theme="dark"] {
-  --bg:           #111110;
-  --surface:      #1c1b1a;
-  --surface-sub:  #232220;
-  --border:       #2e2d2b;
-  --border-str:   #3d3c39;
-  --text:         #e8e6e3;
-  --text-2:       #a8a29e;
-  --text-3:       #57534e;
-  --accent:       #fb923c;
+  --bg:           #0d0f12;
+  --surface:      #15181d;
+  --surface-sub:  #1c2026;
+  --border:       #262b33;
+  --border-str:   #353b45;
+  --text:         #e8eaed;
+  --text-2:       #a1a8b3;
+  --text-3:       #7b8491;
+  --accent:       #818cf8;
   --green:        #4ade80;
-  --green-bg:     #052e16;
+  --green-bg:     #0b2417;
   --green-bd:     #166534;
-  --blue:         #60a5fa;
-  --blue-bg:      #0c1a2e;
-  --blue-bd:      #1e3a5f;
+  --blue:         #a5b4fc;
+  --blue-bg:      #1b1f3a;
+  --blue-bd:      #3730a3;
   --red:          #f87171;
   --sh-sm:        0 1px 2px rgba(0,0,0,0.3);
-  --sh-md:        0 4px 16px rgba(0,0,0,0.4);
-  --focus-ring:   rgba(232, 230, 227, 0.12);
+  --sh-md:        0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.4);
+  --focus-ring:   rgba(165, 180, 252, 0.28);
   --delete-hover-bg: rgba(248, 113, 113, 0.12);
 }
 
@@ -91,7 +103,7 @@ body {
   border: none;
   cursor: pointer;
   padding: 6px;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: background 0.15s;
 }
 .pv-nav-hamburger:hover { background: rgba(255,255,255,0.15); }
@@ -112,13 +124,12 @@ body {
 .pv-nav-btn {
   font-family: var(--font-serif);
   font-size: 0.875rem;
-  font-style: italic;
   color: rgba(255,255,255,0.85);
   background: none;
   border: none;
   cursor: pointer;
   padding: 5px 10px;
-  border-radius: 6px;
+  border-radius: 8px;
   transition: background 0.15s, color 0.15s;
 }
 .pv-nav-btn:hover { background: rgba(255,255,255,0.15); color: #ffffff; }
@@ -131,7 +142,7 @@ body {
   height: 30px;
   background: none;
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   color: rgba(255,255,255,0.8);
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
@@ -177,7 +188,6 @@ body {
 }
 
 .pv-wordmark-text em {
-  font-style: italic;
   font-weight: 400;
 }
 
@@ -193,14 +203,12 @@ body {
 }
 
 .pv-headline em {
-  font-style: italic;
   font-weight: 400;
 }
 
 .pv-tagline {
   font-family: var(--font-serif);
   font-size: 1.05rem;
-  font-style: italic;
   color: rgba(255,255,255,0.75);
   text-shadow: 0 1px 12px rgba(0,0,0,0.55), 0 1px 3px rgba(0,0,0,0.4);
   margin-bottom: 2.5rem;
@@ -211,17 +219,16 @@ body {
   padding: 0.85rem 1.5rem;
   font-family: var(--font-serif);
   font-size: 1.1rem;
-  font-style: italic;
   cursor: pointer;
   border: none;
-  border-radius: 10px;
+  border-radius: 14px;
   background: #ffffff;
-  color: #1c1917;
+  color: #14171c;
   box-shadow: 0 2px 16px rgba(0,0,0,0.18);
   transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
   margin-bottom: 1.75rem;
 }
-.pv-btn-create:hover  { background: #f5f4f2; box-shadow: 0 4px 24px rgba(0,0,0,0.22); }
+.pv-btn-create:hover  { background: #f1f3f6; box-shadow: 0 4px 24px rgba(0,0,0,0.22); }
 .pv-btn-create:active { transform: scale(0.99); }
 
 .pv-or {
@@ -242,7 +249,6 @@ body {
 .pv-or-text {
   font-family: var(--font-serif);
   font-size: 0.875rem;
-  font-style: italic;
   color: rgba(255,255,255,0.85);
   text-shadow: 0 1px 8px rgba(0,0,0,0.5);
   white-space: nowrap;
@@ -269,7 +275,7 @@ body {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border: 1px solid rgba(255,255,255,0.5);
-  border-radius: 8px;
+  border-radius: 10px;
   font-family: var(--font-mono);
   font-size: 1.1rem;
   font-weight: 500;
@@ -291,7 +297,7 @@ body {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,0.3);
-  border-radius: 8px;
+  border-radius: 10px;
   font-family: var(--font-mono);
   font-size: 0.75rem;
   color: #ffffff;
@@ -305,10 +311,9 @@ body {
   padding: 0.7rem 1.25rem;
   font-family: var(--font-serif);
   font-size: 1rem;
-  font-style: italic;
   cursor: pointer;
   border: 1.5px solid rgba(255,255,255,0.75);
-  border-radius: 8px;
+  border-radius: 10px;
   background: rgba(0,0,0,0.32);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
@@ -323,7 +328,7 @@ body {
 
 .pv-join-error {
   font-family: var(--font-mono);
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: rgba(255,160,160,0.9);
 }
 
@@ -344,7 +349,6 @@ body {
   border: none;
   font-family: var(--font-serif);
   font-size: 0.825rem;
-  font-style: italic;
   color: #ffffff;
   text-shadow: 0 1px 8px rgba(0,0,0,0.65), 0 1px 2px rgba(0,0,0,0.5);
   cursor: pointer;
@@ -371,7 +375,7 @@ body {
 
 .pv-qr-reader {
   width: 100% !important;
-  border-radius: 10px;
+  border-radius: 14px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,0.25);
 }
@@ -379,18 +383,17 @@ body {
 .pv-qr-hint {
   font-family: var(--font-serif);
   font-size: 0.875rem;
-  font-style: italic;
   color: rgba(255,255,255,0.6);
   text-align: center;
 }
 
-#pv-qr-reader__scan_region { border-radius: 8px; overflow: hidden; }
+#pv-qr-reader__scan_region { border-radius: 10px; overflow: hidden; }
 #pv-qr-reader__dashboard { display: none !important; }
 
 .pv-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(28, 25, 23, 0.45);
+  background: rgba(21, 24, 29, 0.45);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -403,7 +406,7 @@ body {
 .pv-modal {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 18px;
   padding: 2rem 2.25rem;
   max-width: 460px;
   width: 100%;
@@ -448,7 +451,7 @@ body {
   height: 28px;
   background: var(--surface-sub);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   font-size: 1rem;
   color: var(--text-2);
@@ -471,7 +474,7 @@ body {
 .pv-bg-option {
   background: none;
   border: 2px solid transparent;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
   padding: 0;
   overflow: hidden;
@@ -480,11 +483,11 @@ body {
   transition: border-color 0.15s, transform 0.1s;
 }
 .pv-bg-option img { width: 100%; aspect-ratio: 16/9; object-fit: cover; display: block; }
-.pv-bg-option span { font-family: var(--font-mono); font-size: 0.6rem; color: var(--text-2); padding: 4px 6px; text-align: center; }
+.pv-bg-option span { font-family: var(--font-mono); font-size: 0.75rem; color: var(--text-2); padding: 4px 6px; text-align: center; }
 .pv-bg-option:hover { border-color: var(--border-str); transform: scale(1.02); }
 .pv-bg-option.active { border-color: var(--text); }
 
-.pv-phase-badge { font-family: var(--font-mono); font-size: 0.56rem; letter-spacing: 0.06em; text-transform: uppercase; padding: 2px 7px; border-radius: 999px; }
+.pv-phase-badge { font-family: var(--font-mono); font-size: 0.75rem; letter-spacing: 0; text-transform: none; padding: 2px 7px; border-radius: 999px; }
 .pv-phase-open    { background: var(--green-bg);    color: var(--green);  }
 .pv-phase-closed  { background: var(--surface-sub); color: var(--text-2); }
 .pv-phase-results { background: var(--blue-bg);     color: var(--blue);   }
@@ -503,7 +506,6 @@ body {
 .pv-modal-hint {
   font-family: var(--font-serif);
   font-size: 0.9rem;
-  font-style: italic;
   color: var(--text-3);
   margin: -0.25rem 0 1.25rem;
   line-height: 1.55;
@@ -512,9 +514,9 @@ body {
 .pv-field-label {
   display: block;
   font-family: var(--font-mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--text-2);
   margin-bottom: 0.35rem;
   margin-top: 0.875rem;
@@ -524,7 +526,7 @@ body {
 
 .pv-field-optional {
   color: var(--text-3);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   text-transform: none;
   letter-spacing: 0;
 }
@@ -537,7 +539,7 @@ body {
   color: var(--text);
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
   box-sizing: border-box;
@@ -561,3 +563,19 @@ body {
   margin-top: 1.25rem;
   text-align: center;
 }
+
+/* global polish */
+body { font-feature-settings: "cv11", "ss01"; letter-spacing: -0.005em; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pv-code-input:focus-visible, .pv-link-input:focus-visible, .pv-field-input:focus-visible { outline: none; }
+.pv-headline { font-weight: 650; letter-spacing: -0.035em; }
+.pv-btn-create { font-weight: 600; letter-spacing: -0.01em; }
+.pv-modal { box-shadow: var(--sh-md); }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
+
+/* display font */
+.pv-headline { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; font-size: clamp(3.4rem, 9vw, 5.6rem); line-height: 0.98; }
+.pv-wordmark-text { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; font-size: 1.25rem;  }
+.pv-modal h2 { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; font-size: 1.7rem;  }

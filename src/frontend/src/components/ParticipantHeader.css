@@ -52,7 +52,7 @@
   border: none;
   cursor: pointer;
   padding: 4px;
-  border-radius: 6px;
+  border-radius: 8px;
   flex-shrink: 0;
 }
 .pd-hamburger:hover { background: var(--surface-sub); }
@@ -73,10 +73,10 @@
 
 .pd-phase {
   font-family: var(--font-mono);
-  font-size: 0.56rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 3px 9px;
   border-radius: 999px;
   border: none;
@@ -97,11 +97,11 @@
   font-family: var(--font-mono);
   font-size: 0.875rem;
   font-weight: 500;
-  letter-spacing: 0.12em;
+  letter-spacing: 0;
   color: var(--text-2);
   background: var(--surface-sub);
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: 8px;
   border: 1px solid var(--border);
 }
 
@@ -128,8 +128,7 @@
 
 .pd-hstat-label {
   font-family: var(--font-serif);
-  font-size: 0.68rem;
-  font-style: italic;
+  font-size: 0.75rem;
   color: var(--text-3);
 }
 
@@ -138,17 +137,20 @@
   border: none;
   cursor: pointer;
   padding: 6px;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text-2);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 .pv-nav-icon-btn:hover         { background: var(--surface-sub); }
-[data-theme="light"] .pv-nav-icon-btn { color: #1c1917; }
+[data-theme="light"] .pv-nav-icon-btn { color: #14171c; }
 [data-theme="dark"]  .pv-nav-icon-btn { color: #e5e3e0; }
 
 @media (max-width: 640px) {
   .pd-header      { padding: 0 1rem; }
   .pd-header-code { display: none; }
 }
+
+/* display font */
+.pd-header-label { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; font-size: 1.2rem;  }

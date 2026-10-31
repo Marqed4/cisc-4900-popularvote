@@ -4,7 +4,9 @@
   justify-content: space-between;
   padding: 0 2rem;
   height: 56px;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -28,7 +30,7 @@
   border: none;
   cursor: pointer;
   padding: 4px;
-  border-radius: 6px;
+  border-radius: 8px;
   flex-shrink: 0;
 }
 .hd-hamburger:hover { background: var(--surface-sub); }
@@ -43,7 +45,7 @@
 .hd-back {
   background: none;
   border: none;
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.9rem;
   color: var(--text);
   font-weight: 600;
@@ -60,18 +62,18 @@
 }
 
 .hd-header-label {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 1rem;
   font-weight: 700;
   color: var(--text);
 }
 
 .hd-phase {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.56rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   padding: 3px 9px;
   border-radius: 999px;
   border: none;
@@ -80,7 +82,7 @@
 .hd-phase--open       { background: var(--green-bg);    color: var(--green); }
 .hd-phase--closed     { background: var(--surface-sub); color: var(--text-2); }
 .hd-phase--clustering { background: var(--blue-bg);     color: var(--blue); animation: hd-pulse 1.5s ease-in-out infinite; }
-.hd-phase--expanding  { background: #fff7ed;            color: #c2410c;     animation: hd-pulse 1.5s ease-in-out infinite; }
+.hd-phase--expanding  { background: rgba(234,88,12,0.12); color: #c2410c;     animation: hd-pulse 1.5s ease-in-out infinite; }
 .hd-phase--results    { background: var(--blue-bg);     color: var(--blue); }
 .hd-phase--ended      { background: var(--surface-sub); color: var(--text-3); }
 
@@ -112,9 +114,8 @@
 }
 
 .hd-stat-label {
-  font-family: 'EB Garamond', serif;
-  font-size: 0.68rem;
-  font-style: italic;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
   color: var(--text-3);
 }
 
@@ -123,7 +124,7 @@
   border: none;
   cursor: pointer;
   padding: 6px;
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text-2);
   display: flex;
   align-items: center;
@@ -135,7 +136,7 @@
 }
 
 [data-theme="light"] .pv-nav-icon-btn {
-  color: #1c1917;
+  color: #14171c;
 }
 
 [data-theme="dark"] .pv-nav-icon-btn {
@@ -145,3 +146,6 @@
 @media (max-width: 760px) {
   .hd-header { padding: 0 1rem; }
 }
+
+/* display font */
+.hd-header-label { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; font-size: 1.2rem;  }

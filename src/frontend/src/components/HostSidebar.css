@@ -17,11 +17,11 @@
 .hd-card:last-child { border-bottom: none; }
 
 .hd-card-title {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.58rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--text);
 }
 
@@ -34,7 +34,7 @@
   line-height: 1;
   background: var(--surface-sub);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0.625rem 0.75rem;
   text-align: center;
 }
@@ -46,7 +46,7 @@
 
 .hd-url {
   font-family: 'DM Mono', monospace;
-  font-size: 0.55rem;
+  font-size: 0.75rem;
   color: var(--text-2);
   word-break: break-all;
   line-height: 1.4;
@@ -56,7 +56,7 @@
   display: block;
   margin: 0 auto;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 6px;
   background: var(--surface);
 }
@@ -72,9 +72,8 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.82rem;
-  font-style: italic;
   color: var(--text-2);
   background: var(--surface-sub);
   padding: 2px 9px;
@@ -98,7 +97,7 @@
   display: flex;
   align-items: center;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 10px;
   overflow: hidden;
   background: var(--surface-sub);
 }
@@ -107,9 +106,8 @@
   flex: 1;
   background: transparent;
   border: none;
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.9rem;
-  font-style: italic;
   color: var(--text);
   padding: 6px 10px;
   outline: none;
@@ -135,10 +133,9 @@
 .hd-btn-ghost {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 7px;
-  font-family: 'EB Garamond', serif;
+  border-radius: 10px;
+  font-family: var(--font-sans);
   font-size: 0.875rem;
-  font-style: italic;
   color: var(--text-2);
   cursor: pointer;
   padding: 5px 12px;
@@ -150,12 +147,11 @@
 .hd-btn-primary {
   width: 100%;
   padding: 0.6rem 1rem;
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.975rem;
-  font-style: italic;
   cursor: pointer;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   background: var(--text);
   color: var(--bg);
   transition: opacity 0.15s, transform 0.1s;
@@ -175,8 +171,8 @@
   background: var(--red);
   color: #fff;
   border: none;
-  border-radius: 8px;
-  font-family: 'EB Garamond', serif;
+  border-radius: 10px;
+  font-family: var(--font-sans);
   font-size: 1rem;
   cursor: pointer;
   transition: opacity 0.15s, transform 0.1s;
@@ -186,13 +182,12 @@
 .hd-btn-end:disabled { opacity: 0.35; cursor: not-allowed; }
 
 .hd-error {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.875rem;
-  font-style: italic;
   color: var(--red);
   background: var(--delete-hover-bg);
   border: 1px solid var(--red);
-  border-radius: 7px;
+  border-radius: 10px;
   padding: 6px 10px;
   line-height: 1.5;
 }
@@ -201,9 +196,8 @@
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.875rem;
-  font-style: italic;
   color: var(--text-2);
 }
 
@@ -220,19 +214,18 @@
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .hd-ended-msg {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.875rem;
-  font-style: italic;
   color: var(--text-3);
   text-align: center;
   padding: 0.25rem 0;
 }
 
 .hd-notes-private {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.5rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
   background: var(--surface-sub);
   color: var(--text-3);
   padding: 1px 5px;
@@ -242,9 +235,8 @@
 }
 
 .hd-notes-hint {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.8rem;
-  font-style: italic;
   color: var(--text);
   line-height: 1.5;
   margin: 0;
@@ -254,12 +246,12 @@
   width: 100%;
   padding: 0.55rem 0.7rem;
   font-family: 'DM Mono', monospace;
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   line-height: 1.55;
   color: var(--text);
   background: var(--surface-sub);
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 10px;
   resize: vertical;
   outline: none;
   box-sizing: border-box;
@@ -276,10 +268,15 @@
 
 .hd-notes-error {
   font-family: 'DM Mono', monospace;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--red);
 }
 
 .hd-curator-note {
   color: var(--text-2);
 }
+.hd-card-title { font-size: 0.8rem; font-weight: 600; color: var(--text-2); }
+.hd-code { letter-spacing: 0.16em; border-radius: 12px; }
+.hd-btn-primary, .hd-btn-end { font-weight: 500; letter-spacing: -0.005em; }
+.hd-btn-primary:not(:disabled):not(.hd-btn-expand) { background: var(--accent); color: #fff; }
+.hd-btn-ghost { font-weight: 500; }

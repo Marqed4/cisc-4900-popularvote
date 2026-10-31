@@ -7,16 +7,16 @@
 
 .pd-clusters-title {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  text-transform: none;
+  letter-spacing: 0;
 }
 
 .pd-cluster {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 1.25rem 1.5rem;
   box-shadow: var(--sh-sm);
   transition: box-shadow 0.2s;
@@ -40,9 +40,9 @@
 
 .pd-cluster-badge {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
   background: var(--surface-sub);
   color: var(--text);
   border-radius: 999px;
@@ -52,7 +52,6 @@
 .pd-cluster-mine-tag {
   font-family: var(--font-serif);
   font-size: 0.78rem;
-  font-style: italic;
   color: var(--blue);
 }
 
@@ -68,16 +67,16 @@
 .pd-cluster-answer {
   background: var(--green-bg);
   border: 1px solid var(--green-bd);
-  border-radius: 7px;
+  border-radius: 10px;
   padding: 0.625rem 0.875rem;
   margin-bottom: 0.75rem;
 }
 
 .pd-answer-label {
   font-family: var(--font-mono);
-  font-size: 0.56rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--green);
   display: block;
   margin-bottom: 0.25rem;
@@ -95,8 +94,8 @@
   border: none;
   cursor: pointer;
   font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.06em;
+  font-size: 0.75rem;
+  letter-spacing: 0;
   color: var(--text-2);
   padding: 0;
   margin-bottom: 0.5rem;
@@ -141,7 +140,7 @@
 
 .pd-upvote-btn {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   background: var(--surface-sub);
   border: 1px solid var(--border);
@@ -157,7 +156,7 @@
 
 .pd-upvote-count {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   color: var(--text-3);
   flex-shrink: 0;
 }
@@ -165,11 +164,10 @@
 .pd-add-q-btn {
   font-family: var(--font-serif);
   font-size: 0.875rem;
-  font-style: italic;
   color: var(--text-3);
   background: none;
   border: 1px dashed var(--border-str);
-  border-radius: 7px;
+  border-radius: 10px;
   padding: 0.45rem 1rem;
   width: 100%;
   cursor: pointer;
@@ -191,9 +189,9 @@
 
 .pd-followups-label {
   font-family: var(--font-mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--text-3);
   margin-bottom: 0.5rem;
 }
@@ -212,11 +210,10 @@
   text-align: left;
   background: var(--surface-sub);
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 10px;
   padding: 0.5rem 0.875rem;
   font-family: var(--font-serif);
   font-size: 0.95rem;
-  font-style: italic;
   color: var(--text-2);
   cursor: pointer;
   transition: border-color 0.15s, background 0.15s, color 0.15s;
@@ -234,10 +231,16 @@
 .pd-empty-title {
   font-family: var(--font-serif);
   font-size: 1.05rem;
-  font-style: italic;
   color: var(--text-3);
 }
 
 @media (max-width: 640px) {
   .pd-cluster { padding: 1rem 1.125rem; }
 }
+.pd-clusters-title { font-size: 0.8rem; font-weight: 600; color: var(--text-2); }
+.pd-cluster--mine { border-left-color: var(--accent); }
+.pd-upvote-btn--voted { background: var(--accent); border-color: var(--accent); color: #fff; }
+.pd-cluster-query { letter-spacing: -0.01em; }
+
+/* display font */
+.pd-empty-title { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.01em; font-size: 1.3rem;  }

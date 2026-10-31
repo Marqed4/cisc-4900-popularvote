@@ -6,10 +6,10 @@
 }
 
 .hd-clusters-title {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.62rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  text-transform: none;
+  letter-spacing: 0;
   color: var(--text);
   font-weight: 700;  
 }
@@ -21,8 +21,8 @@
 }
 
 .hd-clusters-sub {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.72rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
   font-weight: 700;
   color: #ffffff;
   text-shadow: 0 1px 4px rgba(0,0,0,0.4);
@@ -37,9 +37,8 @@
 }
 
 .hd-sort-btn {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.78rem;
-  font-style: italic;
   background: none;
   border: none;
   border-radius: 999px;
@@ -51,7 +50,7 @@
 .hd-sort-btn:hover { color: #ffffff; }
 .hd-sort-btn--active {
   background: rgba(255,255,255,0.9);
-  color: #1c1917;
+  color: #14171c;
   font-style: normal;
   font-weight: 600;
 }
@@ -60,12 +59,11 @@
   text-align: center;
   padding: 5rem 0;
   color: var(--text-3);
-  font-style: italic;
   font-size: 1rem;
 }
 
 .hd-cluster {
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 1.25rem 1.5rem;
   margin-bottom: 0.75rem;
   transition: box-shadow 0.2s;
@@ -75,7 +73,7 @@
 }
 .hd-cluster:hover { box-shadow: var(--sh-md); }
 
-[data-theme="dark"]  .hd-cluster { background: rgba(28, 25, 23, 0.55); }
+[data-theme="dark"]  .hd-cluster { background: rgba(21, 24, 29, 0.55); }
 [data-theme="light"] .hd-cluster { background: rgba(255, 255, 255, 0.5); }
 
 .hd-cluster--readonly { opacity: 0.65; pointer-events: none; }
@@ -95,10 +93,10 @@
 }
 
 .hd-cluster-badge {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
   font-weight: 500;
-  letter-spacing: 0.05em;
+  letter-spacing: 0;
   background: var(--surface-sub);
   color: var(--text-2);
   border-radius: 999px;
@@ -108,19 +106,18 @@
 /* "X submissions" count under cluster title */
 .hd-cluster-count {
   font-family: 'DM Mono', monospace;
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   color: var(--text);
   margin-top: 2px;
 }
 
 /* Show/hide questions toggle button */
 .hd-cluster-toggle {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.8rem;
-  font-style: italic;
   background: none;
   border: 1px solid var(--border-str);
-  border-radius: 6px;
+  border-radius: 8px;
   color: var(--text);
   padding: 3px 10px;
   cursor: pointer;
@@ -143,7 +140,7 @@
   color: var(--text-2);
   width: 24px;
   height: 24px;
-  border-radius: 5px;
+  border-radius: 6px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -153,7 +150,7 @@
 .hd-btn-delete-cluster svg { width: 13px; height: 13px; }
 
 .hd-cluster-query {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 1.1rem;
   font-weight: 600;
   color: var(--text);
@@ -181,18 +178,18 @@
 }
 
 .hd-question-text {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.875rem;
   padding-left: 0.75rem;
   padding-top: 0.1rem;
   padding-bottom: 0.1rem;
-  color: #1c1917;
+  color: #14171c;
 }
 [data-theme="dark"] .hd-question-text { color: #d4d2ce; }
 
 .hd-upvote-count {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.6rem;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
   color: var(--text-3);
   flex-shrink: 0;
 }
@@ -200,17 +197,17 @@
 .hd-answer-wrap { margin-top: 0.75rem; }
 
 .hd-answer-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.56rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--green);
   display: block;
   margin-bottom: 0.35rem;
 }
 
 .hd-answer-display {
-  border-radius: 7px;
+  border-radius: 10px;
   padding: 0.625rem 0.875rem;
   font-size: 0.95rem;
   color: var(--text);
@@ -222,16 +219,16 @@
 }
 .hd-answer-display:hover { border-color: var(--green); }
 
-[data-theme="dark"]  .hd-answer-display { background: rgba(28, 25, 23, 0.4);  border: 1px solid rgba(255,255,255,0.08); }
+[data-theme="dark"]  .hd-answer-display { background: rgba(21, 24, 29, 0.4);  border: 1px solid rgba(255,255,255,0.08); }
 [data-theme="light"] .hd-answer-display { background: rgba(255, 255, 255, 0.35); border: 1px solid rgba(0,0,0,0.08); }
 
 .hd-answer-textarea {
   width: 100%;
   box-sizing: border-box;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 0.625rem 0.875rem;
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.95rem;
   color: var(--text);
   resize: none;
@@ -248,7 +245,7 @@
 }
 .hd-answer-textarea::placeholder { color: var(--text-3); }
 
-[data-theme="dark"]  .hd-answer-textarea { background: rgba(28, 25, 23, 0.4);  border-color: rgba(255,255,255,0.08); }
+[data-theme="dark"]  .hd-answer-textarea { background: rgba(21, 24, 29, 0.4);  border-color: rgba(255,255,255,0.08); }
 [data-theme="light"] .hd-answer-textarea { background: rgba(255, 255, 255, 0.35); border-color: rgba(0,0,0,0.08); }
 
 .hd-answer-footer {
@@ -259,13 +256,12 @@
 }
 
 .hd-btn-save {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.875rem;
-  font-style: italic;
   background: var(--text);
   color: var(--bg);
   border: none;
-  border-radius: 7px;
+  border-radius: 10px;
   padding: 0.4rem 1rem;
   cursor: pointer;
   transition: opacity 0.15s;
@@ -273,13 +269,12 @@
 .hd-btn-save:hover { opacity: 0.85; }
 
 .hd-btn-cancel {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.875rem;
-  font-style: italic;
   background: none;
   color: var(--text-2);
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 10px;
   padding: 0.4rem 1rem;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
@@ -287,13 +282,12 @@
 .hd-btn-cancel:hover { background: var(--surface-sub); border-color: var(--border-str); }
 
 .hd-btn-edit-answer {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.8rem;
-  font-style: italic;
   background: none;
   color: var(--text-2);
   border: 1px dashed var(--border-str);
-  border-radius: 7px;
+  border-radius: 10px;
   padding: 0.45rem 1rem;
   width: 100%;
   cursor: pointer;
@@ -306,7 +300,7 @@
   margin: 0.75rem 0 0.5rem;
   padding: 0.875rem 1rem;
   border: 1px solid rgba(21, 128, 61, 0.2);
-  border-radius: 10px;
+  border-radius: 14px;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -315,10 +309,10 @@
 [data-theme="light"] .hd-suggestion { background: rgba(21, 128, 61, 0.08); }
 
 .hd-suggestion-label {
-  font-family: 'DM Mono', monospace;
-  font-size: 0.6rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
   color: var(--green);
   margin-bottom: 0.5rem;
 }
@@ -327,12 +321,12 @@
   color: var(--text-3);
   text-transform: none;
   letter-spacing: 0;
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   margin-left: 0.25rem;
 }
 
 .hd-suggestion-text {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.95rem;
   color: var(--text);
   line-height: 1.6;
@@ -347,35 +341,33 @@
 
 .hd-btn-use-suggestion {
   padding: 0.35rem 0.875rem;
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.85rem;
-  font-style: italic;
   color: var(--surface);
   background: var(--green);
   border: none;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: background 0.15s;
 }
 .hd-btn-use-suggestion:hover { background: #166534; }
 
 .hd-suggestion-hint {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 0.8rem;
-  font-style: italic;
   color: var(--text-3);
 }
 
 .hd-round2-banner {
   background: #f0f4ff;
   border: 1px solid #c7d2fe;
-  border-radius: 10px;
+  border-radius: 14px;
   padding: 1rem 1.25rem;
   margin-bottom: 1.5rem;
 }
 
 .hd-round2-title {
-  font-family: 'EB Garamond', serif;
+  font-family: var(--font-sans);
   font-size: 1.1rem;
   font-weight: 600;
   color: #1e40af;
@@ -388,3 +380,35 @@
   line-height: 1.55;
   margin: 0;
 }
+/* styles for classes HostList.jsx uses */
+.hd-clusters { display: flex; flex-direction: column; }
+.hd-cluster { box-shadow: var(--sh-sm); }
+.hd-cluster-num { color: var(--accent); font-weight: 700; margin-right: 0.25rem; }
+.hd-cluster-info { flex: 1; min-width: 0; }
+.hd-cluster-query { margin-bottom: 0.25rem; letter-spacing: -0.01em; }
+.hd-cluster-count { color: var(--text-2); margin-bottom: 0.75rem; }
+.hd-cluster-delete {
+  background: none; border: none; cursor: pointer; flex-shrink: 0;
+  width: 28px; height: 28px; border-radius: 8px;
+  font-size: 1.1rem; line-height: 1; color: var(--text-2);
+  transition: color 0.15s, background 0.15s;
+}
+.hd-cluster-delete:hover { color: var(--red); background: var(--delete-hover-bg); }
+.hd-question-upvotes { font-size: 0.75rem; color: var(--text-2); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.hd-cluster-answer-area { margin-top: 0.5rem; }
+.hd-answer-input {
+  width: 100%; box-sizing: border-box; resize: vertical; outline: none;
+  font-family: var(--font-sans); font-size: 0.95rem; line-height: 1.6; color: var(--text);
+  padding: 0.65rem 0.875rem; border: 1px solid var(--border); border-radius: 10px;
+  background: var(--surface); transition: border-color 0.15s, box-shadow 0.15s;
+}
+.hd-answer-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
+.hd-answer-btns { display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 0.5rem; }
+.hd-answer-display.has-answer { display: flex; align-items: flex-start; justify-content: space-between; gap: 0.75rem; cursor: default; }
+.hd-answer-display.has-answer .hd-btn-edit-answer { width: auto; flex-shrink: 0; text-align: center; padding: 0.25rem 0.75rem; }
+.hd-answer-display.no-answer { color: var(--text-3); border-style: dashed; }
+.hd-btn-save { background: var(--accent); color: #fff; font-weight: 500; }
+.hd-btn-use-suggestion { color: #fff; font-weight: 500; }
+.hd-round2-banner { background: var(--blue-bg); border-color: var(--blue-bd); }
+.hd-round2-title { color: var(--blue); }
+.hd-round2-sub { color: var(--text-2); }
