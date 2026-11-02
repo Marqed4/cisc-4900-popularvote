@@ -101,7 +101,7 @@ class TestAddSubmission:
 
 class TestSaveClusters:
     def test_replaces_existing_rows_and_preserves_prior_answer(self, monkeypatch):
-        existing = [{'representative_query': 'Why X?', 'answer': 'Because Y', 'upvote_count': 3}]
+        existing = [{'id': 'old-id', 'representative_query': 'Why X?', 'answer': 'Because Y', 'upvote_count': 3}]
         select_chain = MagicMock()
         select_chain.eq.return_value = _chain(existing)
         delete_chain = MagicMock()

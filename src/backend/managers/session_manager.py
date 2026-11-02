@@ -69,6 +69,7 @@ class SessionManager:
                     'submissions': submissions,
                     'clusters': clusters,
                     'participantCount': 0,
+                    'viewerCount': self._count_viewers(s['code']),
                     'expansionRound': s.get('expansion_round') or 0,
                     'curators': s.get('curators') or [],
                     'contextualFacts': [f for c in clusters for f in (c.get('contextual_facts') or [])],
@@ -95,6 +96,7 @@ class SessionManager:
             'submissions': [],
             'clusters': [],
             'participantCount': 0,
+            'viewerCount': 0,
             'expansionRound': 0,
             'curators': [],
             'contextualFacts': [],
@@ -172,6 +174,26 @@ class SessionManager:
             raise Exception('Session not found')
         session['participantCount'] += 1
         return session['participantCount']
+
+    def _count_viewers(self, code):
+        # unique devices survive a restart through session_viewers. if the table is missing
+        # or the call fails, 0 beats refusing to boot.
+        try:
+            return SessionStore.count_viewers(code) or 0
+        except Exception as err:
+            print(f'[SessionManager] viewer count unavailable for {code}: {err}')
+            return 0
+
+    def record_viewer(self, code, device_id):
+        # called by the socket join for participants only. the database primary key decides
+        # whether this device is new, memory just follows along. returns True on a new device.
+        session = self.get_session(code)
+        if not session:
+            return False
+        is_new = SessionStore.record_viewer(code, device_id)
+        if is_new:
+            session['viewerCount'] = session.get('viewerCount', 0) + 1
+        return is_new
 
     def decrement_participants(self, code):
         session = self.get_session(code)

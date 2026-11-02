@@ -424,6 +424,7 @@ def get_session(code):
             'submissionCount': len(session.get('submissions') or []),
             'submissionsAtLastCluster': session.get('submissionsAtLastCluster') or 0,
             'participantCount': session.get('participantCount') or 0,
+            'viewerCount': session.get('viewerCount') or 0,
             'expansionRound': session.get('expansionRound') or 0,
             'curators': session.get('curators') or [],
             'contextualFacts': session.get('contextualFacts') or [],
