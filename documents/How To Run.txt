@@ -1,25 +1,22 @@
-1. Unpackage the PopularVote.zip/rar on your Desktop
-2. Open Powershell
-3. type: cd .\Desktop\PopularVote
-4. type: npm install
-5. type: cd .\server
-6. type: npm install
-7. Create .env file in root/PopularVote:
+1. Unpackage the project somewhere (e.g. Desktop\PopularVote) and open PowerShell in it
+2. Install the backend:   pip install -r src/backend/requirements.txt
+3. Install the frontend:  npm install --prefix src/frontend
+4. Create src/backend/.env (copy .env.example) and fill in the keys (ask on Slack):
 
-7.1: Paste & add keys
+   SUPABASE_URL=
+   SUPABASE_SERVICE_ROLE_KEY=
+   GEMINI_API_KEY=
+   PORT=2167
 
-{/*Check slack for keys.*/}
+5. Create src/frontend/.env (copy .env.example):
 
-VITE_SUPABASE_URL=
-VITE_SUPABASE_ANON_KEY=
+   VITE_API_URL=http://localhost:2167
+   VITE_SITE_URL=http://localhost:6967
+   VITE_SUPABASE_URL=
+   VITE_SUPABASE_ANON_KEY=
 
-8. Create .env file in server/:
+6. Run the Supabase SQL in migration_session_viewers.sql once (unique-device count)
+7. From the repo root run: npm run dev
+   (starts Flask on :2167 and Vite on :6967 together)
 
-8.1: Paste & add keys
-
-SUPABASE_URL=
-SUPABASE_SERVICE_ROLE_KEY=
-GEMINI_API_KEY=
-PORT=2167
-
-9. Run `npm run dev` from the root/PopularVote
+Tests: pip install -r src/backend/requirements-dev.txt, then python -m pytest

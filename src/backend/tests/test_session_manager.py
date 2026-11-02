@@ -100,3 +100,22 @@ class TestUpvoteQuestion:
 
         with pytest.raises(Exception, match='Question not found'):
             manager.upvote_question(code, 'Nothing like this')
+
+
+class TestRecordViewer:
+    def test_new_device_bumps_viewer_count(self, manager):
+        code = manager.create_session()['code']
+        session_manager_module.SessionStore.record_viewer.return_value = True
+
+        assert manager.record_viewer(code, 'device-0001') is True
+        assert manager.get_session(code)['viewerCount'] == 1
+
+    def test_repeat_device_does_not_bump(self, manager):
+        code = manager.create_session()['code']
+        session_manager_module.SessionStore.record_viewer.return_value = False
+
+        assert manager.record_viewer(code, 'device-0001') is False
+        assert manager.get_session(code)['viewerCount'] == 0
+
+    def test_unknown_session_is_ignored(self, manager):
+        assert manager.record_viewer('NOPE00', 'device-0001') is False
