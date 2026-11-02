@@ -11,6 +11,7 @@ import HostList from "./HostList";
 import HostSidebar from "./HostSidebar.jsx";
 import ParticipantList from "./ParticipantList";
 import "./HostLayout.css";
+import { API_BASE, SOCKET_URL } from "../lib/api.js";
 
 // The host's side of a room, start to finish. rough order of events:
 //   1. mount: code "NEW" creates a room (createSession), anything else loads an old one (fetchSession)
@@ -66,7 +67,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   const codeRef = useRef(initialCode);
   const encryptedRef = useRef(initialEncrypted);
   const hostKeysRef = useRef(null); // promise of { keyPair, publicKey, roomKey }
-  const apiBase = import.meta.env.VITE_API_URL ?? "";
+  const apiBase = API_BASE;
 
   // ====================== E2E helpers ======================
 
@@ -265,7 +266,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   useEffect(() => {
     if (!code || code === "NEW") return;
 
-    const socket = io(import.meta.env.VITE_API_URL ?? "http://localhost:2167");
+    const socket = io(SOCKET_URL);
     socketRef.current = socket;
 
     // -- joining and staying joined --

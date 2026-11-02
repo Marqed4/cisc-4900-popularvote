@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import "./HostSidebar.css";
+import { API_BASE } from "../lib/api.js";
 
 function QRDisplay({ url }) {
   const canvasRef = useRef(null);
@@ -48,7 +49,7 @@ export default function HostSidebar({
     setNotesText(hostNotes ?? '');
   }, [hostNotes]);
 
-  const apiBase = import.meta.env.VITE_API_URL ?? "";
+  const apiBase = API_BASE;
 
   function copyCode() { navigator.clipboard.writeText(code); }
   function copyLink() { navigator.clipboard.writeText(`${window.location.origin}?code=${code}`); }
