@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
 import { DefaultBackgrounds } from '../assets/backgrounds/index.js';
 import "./Home.css";
+import { API_BASE } from "../lib/api.js";
 
 function SettingsIcon() {
   return (
@@ -142,7 +143,7 @@ function JoinFlow({ onJoin }) {
     if (target.length !== 6) { setError("Codes are 6 characters."); return; }
     setJoining(true);
     try {
-      const apiBase = import.meta.env.VITE_API_URL ?? "";
+      const apiBase = API_BASE;
       const res = await fetch(`${apiBase}/api/sessions/${target}/join`, { method: "POST" });
       if (!res.ok) { const b = await res.json().catch(() => ({})); setError(b.error ?? "Session not found."); return; }
       onJoin(target);

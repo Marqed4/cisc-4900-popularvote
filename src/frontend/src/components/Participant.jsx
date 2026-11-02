@@ -13,6 +13,7 @@ import ParticipantInput from "./ParticipantInput";
 import Summary from "./Summary";
 
 import "./ParticipantLayout.css";
+import { API_BASE, SOCKET_URL } from "../lib/api.js";
 
 // localStorage key scoped to this session code so multiple sessions don't collide
 function mySubsKey(code) { return `pv-my-subs-${code}`; }
@@ -94,8 +95,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
   useEffect(() => {
     if (!code) return;
 
-    const apiUrl = import.meta.env.VITE_API_URL ?? "";
-    const socket = io(apiUrl || "http://localhost:2167");
+    const socket = io(SOCKET_URL);
     socketRef.current = socket;
 
     // connected: remember our socket id (curator status is keyed on it) and ask to join the room.
@@ -229,7 +229,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     return () => clearInterval(interval);
   }, [code]);
 
-  const apiBase = import.meta.env.VITE_API_URL ?? "";
+  const apiBase = API_BASE;
 
   // GET /api/sessions/:code. runs on mount, on reconnect, after the room key arrives, and on the
   // poll. replaces phase, clusters and answers wholesale, then (signed in only) restores "my
