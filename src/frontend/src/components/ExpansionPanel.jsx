@@ -1,5 +1,14 @@
 import "./HostExpansion.css";
 
+function CheckIcon({ selected }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.5" />
+      {selected && <path d="M5 8.2l2 2L11 6" />}
+    </svg>
+  );
+}
+
 export default function ExpansionPanel({
   cluster,
   preview,
@@ -58,7 +67,7 @@ export default function ExpansionPanel({
                     onClick={() => onToggleQuestion(cluster.id, q)}
                   >
                     <span className="hd-preview-check">
-                      {isSelected ? "✓" : "○"}
+                      <CheckIcon selected={isSelected} />
                     </span>
                     <span className="hd-preview-text">{q}</span>
                   </li>
@@ -76,5 +85,3 @@ export default function ExpansionPanel({
     </div>
   );
 }
-
-// change checkmark to svn

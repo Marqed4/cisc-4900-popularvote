@@ -5,10 +5,13 @@ import Sandstone from './day_Sandstone.jpg'
 import PaleStone from './day_PaleStone.jpg'
 import Studio from './night_Studio.jpg'
 import PlasterWall from './night_PlasterWall.jpg'
+import Sweater from './night_Sweater.jpg'
 
 export const DefaultBackgrounds = {
   day_Sandstone: Sandstone,
   day_PaleStone: PaleStone,
   night_Studio: Studio,
+  night_Sweater: Sweater,
   night_PlasterWall: PlasterWall,
+
 }

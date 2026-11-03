@@ -12,3 +12,13 @@ export const API_BASE = import.meta.env.PROD && pointsAtLocalhost ? "" : configu
 
 // undefined makes socket.io connect to the page's own origin, which is what production wants.
 export const SOCKET_URL = API_BASE || (import.meta.env.DEV ? "http://localhost:2167" : undefined);
+
+// where Google sign-in sends people back to. same story as above: a localhost value in a
+// production bundle would strand every visitor on their own machine after logging in, so
+// production falls back to whatever address the page is actually running on.
+const siteConfigured = import.meta.env.VITE_SITE_URL ?? "";
+const siteIsLocalhost = /^https?:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(siteConfigured);
+
+export const SITE_URL = siteConfigured && !(import.meta.env.PROD && siteIsLocalhost)
+  ? siteConfigured
+  : window.location.origin;

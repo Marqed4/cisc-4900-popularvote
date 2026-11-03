@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "../lib/supabase.js";
+import { SITE_URL } from "../lib/api.js";
 import "./Sidebar.css"; // reuses .am-* classes defined there
 
 function GoogleIcon() {
@@ -23,8 +24,7 @@ async function handleGoogle() {
   const { error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: { 
-      // redirectTo: "https://popularvote-production.up.railway.app",
-      redirectTo: import.meta.env.VITE_SITE_URL ?? window.location.origin,
+      redirectTo: SITE_URL,
       skipBrowserRedirect: false
     },
   });

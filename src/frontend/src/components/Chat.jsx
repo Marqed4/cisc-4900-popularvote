@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { API_BASE } from '../lib/api.js';
 
 export default function Chat({ sessionContext = '' }) {
   const [messages, setMessages] = useState([]);
@@ -21,7 +22,7 @@ export default function Chat({ sessionContext = '' }) {
     setLoading(true);
 
     try {
-      const res = await fetch('/api/chat', {
+      const res = await fetch(`${API_BASE}/api/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ messages: next, context: { sessionContext } })
