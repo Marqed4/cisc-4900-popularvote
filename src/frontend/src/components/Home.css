@@ -168,7 +168,18 @@ body {
   opacity: 0.92;
 }
 
-.pv-wordmark-icon { font-size: 1.1rem; }
+.pv-wordmark-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.9rem;
+  height: 1.9rem;
+  font-size: 1.1rem;
+  line-height: 1;
+  background: rgba(255, 255, 255, 0.92);
+  border-radius: 8px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+}
 
 .pv-wordmark-text {
   font-family: var(--font-serif);

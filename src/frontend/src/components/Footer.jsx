@@ -1,7 +1,6 @@
 import "./Footer.css";
 
-// Replace with your repo link
-const GITHUB_URL = "https://github.com/YOUR-USERNAME/YOUR-REPO";
+const GITHUB_URL = "https://github.com/Marqed4/PopularVote";
 
 function GitHubIcon() {
   return (
