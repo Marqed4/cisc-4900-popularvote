@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DefaultBackgrounds } from '../assets/backgrounds/index.js';
+import ThemePicker from '../shared/ThemePicker';
 import "./HostHeader.css";
 
 function SettingsIcon() {
@@ -31,30 +31,7 @@ function SunIcon() {
   );
 }
 
-function BackgroundPicker({ current, onSelect, onClose, darkMode }) {
-  const filtered = Object.entries(DefaultBackgrounds).filter(([key]) =>
-    darkMode ? key.startsWith("night_") : key.startsWith("day_")
-  );
-  return (
-    <div className="pv-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="pv-modal pv-bg-picker">
-        <button className="pv-modal-close" onClick={onClose}>×</button>
-        <h2>Choose Background</h2>
-        <div className="pv-bg-grid">
-          {filtered.map(([key, src]) => (
-            <button key={key} className={`pv-bg-option ${current === key ? "active" : ""}`}
-              onClick={() => { onSelect(key); onClose(); }}>
-              <img src={src} alt={key} />
-              <span>{key.replace(/^(day_|night_)/, '').replace(/([A-Z])/g, ' $1').trim()}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function HostHeader({ phase, participantCount, viewerCount, submissionCount, onBack, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg }) {
+export default function HostHeader({ phase, participantCount, viewerCount, submissionCount, onBack, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg, look, onSelectLook }) {
   const [showBgPicker, setShowBgPicker] = useState(false);
 
   return (
@@ -73,15 +50,15 @@ export default function HostHeader({ phase, participantCount, viewerCount, submi
 
         <div className="hd-header-right">
           <div className="hd-stat">
-            <span className="hd-stat-num">{participantCount}</span>
+            <span key={participantCount} className="hd-stat-num">{participantCount}</span>
             <span className="hd-stat-label">participants</span>
           </div>
           <div className="hd-stat" title="Unique devices that have joined this session">
-            <span className="hd-stat-num">{viewerCount ?? 0}</span>
+            <span key={viewerCount ?? 0} className="hd-stat-num">{viewerCount ?? 0}</span>
             <span className="hd-stat-label">devices</span>
           </div>
           <div className="hd-stat">
-            <span className="hd-stat-num">{submissionCount}</span>
+            <span key={submissionCount} className="hd-stat-num">{submissionCount}</span>
             <span className="hd-stat-label">submissions</span>
           </div>
           <button className="pv-nav-icon-btn" onClick={onToggleDark} title={darkMode ? "Light mode" : "Dark mode"}>
@@ -94,9 +71,11 @@ export default function HostHeader({ phase, participantCount, viewerCount, submi
       </header>
 
       {showBgPicker && (
-        <BackgroundPicker
-          current={bgKey}
-          onSelect={onSelectBg}
+        <ThemePicker
+          bgKey={bgKey}
+          onSelectBg={onSelectBg}
+          look={look}
+          onSelectLook={onSelectLook}
           onClose={() => setShowBgPicker(false)}
           darkMode={darkMode}
         />

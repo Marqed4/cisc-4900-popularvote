@@ -132,7 +132,23 @@
   gap: 0.375rem;
   margin-top: 2px;
   flex-wrap: wrap;
+  row-gap: 4px;
 }
+
+/* Privacy tier badge */
+.sb-tier {
+  font-family: var(--font-mono, 'DM Mono', monospace);
+  font-size: 0.75rem;
+  letter-spacing: 0;
+  text-transform: none;
+  padding: 1px 6px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.sb-tier-normal { background: var(--surface-sub, #f1f3f6); color: var(--text-3, #a8a29e); }
+.sb-tier-e2e    { background: var(--blue-bg, #eff6ff);     color: var(--blue, #1d4ed8); }
+.sb-tier-hashed { background: rgba(124, 58, 237, 0.12);    color: #7c3aed; }
+[data-theme="dark"] .sb-tier-hashed { background: rgba(167, 139, 250, 0.16); color: #c4b5fd; }
 
 .sb-item-role {
   font-family: var(--font-mono, var(--font-sans));

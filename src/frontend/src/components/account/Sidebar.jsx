@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { supabase } from "../lib/supabase.js";
+import { supabase } from "../../lib/supabase.js";
 import "./Sidebar.css";
 
 const MY_SESSIONS_KEY = "pv-my-sessions";
@@ -17,6 +17,15 @@ const PHASE_MAP = {
 function PhaseBadge({ phase }) {
   const [cls, label] = PHASE_MAP[phase] ?? ["sb-phase-ended", phase];
   return <span className={`sb-phase ${cls}`}>{label}</span>;
+}
+
+function TierBadge({ encrypted, hashed_identity }) {
+  const [cls, label, hint] = encrypted && hashed_identity
+    ? ["sb-tier-hashed", "Hashed identity", "Server cannot read questions, and participants cannot be linked across sessions"]
+    : encrypted
+    ? ["sb-tier-e2e",    "Encrypted",       "Server cannot read questions"]
+    : ["sb-tier-normal", "Normal",          "Questions are stored readable on the server"];
+  return <span className={`sb-tier ${cls}`} title={hint}>{label}</span>;
 }
 
 function formatDate(iso) {
@@ -58,7 +67,7 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
         const { data: sessionData } = await supabase
           .from("sessions")
           // Display title not join code
-          .select("code, phase, tags, title, created_at")
+          .select("code, phase, tags, title, created_at, encrypted, hashed_identity")
           .in("code", codes);
 
         const byCode = Object.fromEntries((sessionData ?? []).map(s => [s.code, s]));
@@ -77,7 +86,7 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
         const { data } = await supabase
           .from("sessions")
           // Display title not join code
-          .select("code, phase, tags, title, created_at")
+          .select("code, phase, tags, title, created_at, encrypted, hashed_identity")
           .in("code", allCodes)
           .order("created_at", { ascending: false });
 
@@ -154,6 +163,7 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
                     <span className="sb-dot">·</span>
                     <span className="sb-item-date">{formatDate(s.created_at)}</span>
                     <PhaseBadge phase={s.phase} />
+                    <TierBadge encrypted={s.encrypted} hashed_identity={s.hashed_identity} />
                   </div>
                 </div>
                 <button

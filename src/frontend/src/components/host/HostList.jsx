@@ -1,4 +1,4 @@
-import Summary from "./Summary";
+import Summary from "../shared/Summary";
 import "./HostCluster.css";
 import React from "react";
 

@@ -16,6 +16,8 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
   // chip feedback: track which chips are loading or confirmed
   const [loadingChip, setLoadingChip] = useState(null);   // chip text currently submitting
   const [submittedChips, setSubmittedChips] = useState(new Set()); // chips already submitted
+  // the question whose upvote just landed. drives the pop and burst, cleared after a moment
+  const [popped, setPopped] = useState(null);
 
   const questions = cluster.questions ?? [];
   const hasMine = questions.some(q => myTexts.has(q.text));
@@ -50,6 +52,13 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
     } finally {
       setAnswerSaving(false);
     }
+  }
+
+  function handleUpvote(text, voted) {
+    onUpvote(text);
+    if (voted) return;
+    setPopped(text);
+    setTimeout(() => setPopped(p => (p === text ? null : p)), 1200);
   }
 
   async function handleChipClick(q) {
@@ -165,12 +174,13 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
                     </span>
                     {!isOwn && !isEnded && (
                       <button
-                        className={`pd-upvote-btn ${voted ? "pd-upvote-btn--voted" : ""}`}
-                        onClick={() => onUpvote(q.text)}
+                        className={`pd-upvote-btn ${voted ? "pd-upvote-btn--voted" : ""} ${popped === q.text ? "pd-upvote-btn--pop" : ""}`}
+                        onClick={() => handleUpvote(q.text, voted)}
                         title={voted ? "Remove upvote" : "Upvote"}
                         aria-pressed={!!voted}
                       >
-                        ▲ {q.upvoteCount ?? 0}
+                        ▲ <span key={q.upvoteCount ?? 0} className="pd-upvote-num">{q.upvoteCount ?? 0}</span>
+                        {popped === q.text && <span className="pd-burst" aria-hidden="true" />}
                       </button>
                     )}
                     {isEnded && q.upvoteCount > 0 && (

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DefaultBackgrounds } from '../assets/backgrounds/index.js';
+import ThemePicker from '../shared/ThemePicker';
 import "./ParticipantHeader.css";
 
 // Icons
@@ -33,30 +33,7 @@ function SunIcon() {
   );
 }
 
-function BackgroundPicker({ current, onSelect, onClose, darkMode }) {
-  const filtered = Object.entries(DefaultBackgrounds).filter(([key]) =>
-    darkMode ? key.startsWith("night_") : key.startsWith("day_")
-  );
-  return (
-    <div className="pv-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="pv-modal pv-bg-picker">
-        <button className="pv-modal-close" onClick={onClose}>×</button>
-        <h2>Choose Background</h2>
-        <div className="pv-bg-grid">
-          {filtered.map(([key, src]) => (
-            <button key={key} className={`pv-bg-option ${current === key ? "active" : ""}`}
-              onClick={() => { onSelect(key); onClose(); }}>
-              <img src={src} alt={key} />
-              <span>{key.replace(/^(day_|night_)/, '').replace(/([A-Z])/g, ' $1').trim()}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function ParticipantHeader({ phase = "OPEN", code, onBack, onOpenSidebar, submittedCount, inClusterCount, darkMode, onToggleDark, bgKey, onSelectBg }) {
+export default function ParticipantHeader({ phase = "OPEN", code, onBack, onOpenSidebar, submittedCount, inClusterCount, darkMode, onToggleDark, bgKey, onSelectBg, look, onSelectLook }) {
   const [showBgPicker, setShowBgPicker] = useState(false);
   const showStats = phase === "RESULTS" || phase === "ENDED";
 
@@ -100,9 +77,11 @@ export default function ParticipantHeader({ phase = "OPEN", code, onBack, onOpen
       </header>
 
       {showBgPicker && (
-        <BackgroundPicker
-          current={bgKey}
-          onSelect={onSelectBg}
+        <ThemePicker
+          bgKey={bgKey}
+          onSelectBg={onSelectBg}
+          look={look}
+          onSelectLook={onSelectLook}
           onClose={() => setShowBgPicker(false)}
           darkMode={darkMode}
         />

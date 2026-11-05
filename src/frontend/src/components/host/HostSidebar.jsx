@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import "./HostSidebar.css";
-import { API_BASE } from "../lib/api.js";
+import { API_BASE } from "../../lib/api.js";
 
 function QRDisplay({ url }) {
   const canvasRef = useRef(null);

@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { Html5Qrcode } from "html5-qrcode";
-import { DefaultBackgrounds } from '../assets/backgrounds/index.js';
+import ThemePicker from '../shared/ThemePicker';
 import "./Home.css";
-import { API_BASE } from "../lib/api.js";
+import { API_BASE } from "../../lib/api.js";
 
 function SettingsIcon() {
   return (
@@ -28,29 +28,6 @@ function SunIcon() {
       <line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
       <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
     </svg>
-  );
-}
-
-function BackgroundPicker({ current, onSelect, onClose, darkMode }) {
-  const filtered = Object.entries(DefaultBackgrounds).filter(([key]) =>
-    darkMode ? key.startsWith("night_") : key.startsWith("day_")
-  );
-  return (
-    <div className="pv-overlay" onClick={e => e.target === e.currentTarget && onClose()}>
-      <div className="pv-modal pv-bg-picker">
-        <button className="pv-modal-close" onClick={onClose}>×</button>
-        <h2>Choose Background</h2>
-        <div className="pv-bg-grid">
-          {filtered.map(([key, src]) => (
-            <button key={key} className={`pv-bg-option ${current === key ? "active" : ""}`}
-              onClick={() => { onSelect(key); onClose(); }}>
-              <img src={src} alt={key} />
-              <span>{key.replace(/^(day_|night_)/, '').replace(/([A-Z])/g, ' $1').trim()}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
   );
 }
 
@@ -206,13 +183,35 @@ function JoinFlow({ onJoin }) {
   );
 }
 
+// the three privacy tiers. the server only knows two flags, so a tier is just a pair of them:
+//   normal  -> neither. server reads questions, so clustering and the AI can use them as plain
+//              key/value rows.
+//   e2e     -> encrypted. server holds ciphertext, the key lives in the host's browser.
+//   hashed  -> encrypted + hashedIdentity. same ciphertext, but the key comes from a 6 character
+//              passcode shown once, and participants reach the server only as per-session hashes.
+const TIERS = [
+  {
+    id: 'normal', label: 'Normal', flags: { encrypted: false, hashedIdentity: false },
+    blurb: 'Best features. The server can read questions, so the AI can search, cluster and suggest answers straight from the database.',
+  },
+  {
+    id: 'e2e', label: 'End-to-end encrypted', flags: { encrypted: true, hashedIdentity: false },
+    blurb: 'The server only stores ciphertext. Clustering runs in your browser, with no AI help. The key stays in this browser.',
+  },
+  {
+    id: 'hashed', label: 'Hashed identity', flags: { encrypted: true, hashedIdentity: true },
+    blurb: 'Encrypted, and participants cannot be linked across sessions. You get a 6 character decryption code, separate from the join code. Everyone types it to read or send questions, and it is never stored. Lose it and the questions are gone.',
+  },
+];
+
 function NewSessionModal({ onStart, onClose }) {
   const [title, setTitle]       = useState('');
   const [description, setDescription] = useState('');
-  const [encrypted, setEncrypted] = useState(false);
+  const [tier, setTier] = useState('normal');
 
   function handleStart() {
-    onStart(title.trim(), description.trim(), encrypted);
+    const { encrypted, hashedIdentity } = TIERS.find(t => t.id === tier).flags;
+    onStart(title.trim(), description.trim(), encrypted, hashedIdentity);
   }
 
   return (
@@ -239,14 +238,24 @@ function NewSessionModal({ onStart, onClose }) {
           maxLength={500}
           rows={3}
         />
-        <label className="pv-field-label">
-          <input
-            type="checkbox"
-            checked={encrypted}
-            onChange={e => setEncrypted(e.target.checked)}
-          />{' '}
-          End-to-end encrypted <span className="pv-field-optional">(server only sees ciphertext; questions are clustered in your browser)</span>
-        </label>
+        <fieldset className="pv-tier-group">
+          <legend className="pv-field-label">Privacy</legend>
+          {TIERS.map(t => (
+            <label key={t.id} className={`pv-tier ${tier === t.id ? 'pv-tier--on' : ''}`}>
+              <input
+                type="radio"
+                name="pv-tier"
+                value={t.id}
+                checked={tier === t.id}
+                onChange={() => setTier(t.id)}
+              />
+              <span className="pv-tier-text">
+                <span className="pv-tier-name">{t.label}{t.id === 'normal' && <span className="pv-field-optional"> (default)</span>}</span>
+                <span className="pv-tier-blurb">{t.blurb}</span>
+              </span>
+            </label>
+          ))}
+        </fieldset>
         <button className="pv-btn-create pv-btn-create--modal" onClick={handleStart}>
           Create session →
         </button>
@@ -256,7 +265,7 @@ function NewSessionModal({ onStart, onClose }) {
 }
 
 export default function Home({ onNavigate, user, onOpenSidebar, onOpenAuth, onSignOut,
-  bgKey, darkMode, onToggleDark, onSelectBg }) {
+  bgKey, darkMode, onToggleDark, onSelectBg, look, onSelectLook }) {
   const [showInstructions, setShowInstructions] = useState(false);
   const [showBgPicker,     setShowBgPicker]     = useState(false);
   const [showNewSession,   setShowNewSession]    = useState(false);
@@ -316,14 +325,14 @@ export default function Home({ onNavigate, user, onOpenSidebar, onOpenAuth, onSi
       {showNewSession   && (
         <NewSessionModal
           onClose={() => setShowNewSession(false)}
-          onStart={(title, description, encrypted) => {
+          onStart={(title, description, encrypted, hashedIdentity) => {
             setShowNewSession(false);
-            onNavigate?.("host", "NEW", { title, description, encrypted });
+            onNavigate?.("host", "NEW", { title, description, encrypted, hashedIdentity });
           }}
         />
       )}
       {showBgPicker     && (
-        <BackgroundPicker current={bgKey} onSelect={onSelectBg}
+        <ThemePicker bgKey={bgKey} onSelectBg={onSelectBg} look={look} onSelectLook={onSelectLook}
           onClose={() => setShowBgPicker(false)} darkMode={darkMode} />
       )}
     </div>
