@@ -1,19 +1,20 @@
 import { useState, useEffect, useRef } from "react";
 import { io } from "socket.io-client";
-import { supabase } from "../lib/supabase.js";
-import { getDeviceId } from "../lib/deviceId.js";
+import { supabase } from "../../lib/supabase.js";
+import { getDeviceId, sessionUserHash } from "../../lib/deviceId.js";
 import {
   generateKeyPair, exportPublicKey, importPublicKey, unwrapRoomKey, encryptText, decryptText,
-  saveRoomKey, loadRoomKey,
-} from "../lib/crypto";
+  saveRoomKey, loadRoomKey, deriveRoomKeyFromPasscode, normalizePasscode, verifyKeyCheck,
+} from "../../lib/crypto";
 
 import ParticipantClusterList from "./ParticipantCluster";
 import ParticipantHeader from "./ParticipantHeader";
 import ParticipantInput from "./ParticipantInput";
-import Summary from "./Summary";
+import PasscodeCard from "../shared/PasscodeCard";
+import Summary from "../shared/Summary";
 
 import "./ParticipantLayout.css";
-import { API_BASE, SOCKET_URL } from "../lib/api.js";
+import { API_BASE, SOCKET_URL } from "../../lib/api.js";
 
 // localStorage key scoped to this session code so multiple sessions don't collide
 function mySubsKey(code) { return `pv-my-subs-${code}`; }
@@ -54,7 +55,7 @@ async function decryptClusters(clusters, encrypted, roomKey) {
 //   4. submit questions, upvote, follow up, all through REST while sockets push changes back
 //   5. the host moves the phase along and the render ladder at the bottom picks a screen
 // REST is the source of truth and the socket is the gossip. a 10 second poll covers the gaps.
-export default function Participant({ code, onBack, user, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg }) {
+export default function Participant({ code, onBack, user, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg, look, onSelectLook }) {
   // phase mirrors the server: OPEN, CLOSED, CLUSTERING, RESULTS, EXPANDING, ENDED
   const [phase, setPhase] = useState("OPEN");
   const [title, setTitle] = useState('');
@@ -80,6 +81,22 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
   const keyPairRef = useRef(null);
   const roomKeyRef = useRef(null);
   const encryptedRef = useRef(false);
+  // null until the room's hashedIdentity flag has been read. hashed rooms get a per-session
+  // pseudonym on join:room instead of the raw device id, see sessionUserHash.
+  const hashedRef = useRef(null);
+  // hashed identity rooms also lock the questions behind a decryption code the person types in.
+  // `hashed` drives the lock screen, `unlocked` flips once the typed code checks out. the key it
+  // makes only ever sits in roomKeyRef, so a refresh or a new tab asks for the code again.
+  const [hashed, setHashed] = useState(false);
+  const [unlocked, setUnlocked] = useState(false);
+  const [unlockError, setUnlockError] = useState("");
+  const [unlocking, setUnlocking] = useState(false);
+
+  // "my questions" are kept in localStorage so a refresh still shows them. in a hashed room that
+  // would be plaintext sitting in the browser, which is exactly what the code is there to prevent.
+  function persistMine(next) {
+    if (!hashedRef.current) saveMySubmissions(code, next);
+  }
 
   // Step 1, first load. the saved key has to be in the ref before fetchSession runs, otherwise
   // an encrypted room paints as "key unavailable" for no good reason.
@@ -100,9 +117,28 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
 
     // connected: remember our socket id (curator status is keyed on it) and ask to join the room.
     // the server answers with session:sync.
-    socket.on("connect", () => {
+    // which id to announce. the flag has to be known BEFORE join:room goes out, since the raw
+    // device id can't be taken back once the server has it, so it is read first and kept for
+    // reconnects. if the lookup fails the hash is the safe guess (the room still counts one
+    // device per person either way).
+    async function joinIdentity() {
+      if (hashedRef.current === null) {
+        try {
+          const res = await fetch(`${API_BASE}/api/sessions/${code}`);
+          if (!res.ok) throw new Error("lookup failed");
+          hashedRef.current = !!(await res.json()).hashedIdentity;
+        } catch {
+          return sessionUserHash(code);
+        }
+      }
+      return hashedRef.current ? sessionUserHash(code) : getDeviceId();
+    }
+
+    socket.on("connect", async () => {
       socketIdRef.current = socket.id;
-      socket.emit("join:room", { code, role: "participant", deviceId: getDeviceId() });
+      const deviceId = await joinIdentity();
+      if (!socket.connected) return;
+      socket.emit("join:room", { code, role: "participant", deviceId });
     });
 
     // the server's reply to join:room. catches us up on phase, clusters and curators, and for
@@ -112,13 +148,16 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       // E2E: send our public key so the host can hand us the room key.
       if (syncEncrypted) {
         encryptedRef.current = true;
-        try {
-          if (!keyPairRef.current) keyPairRef.current = await generateKeyPair();
-          if (!roomKeyRef.current) {
-            socket.emit("pubkey_exchange", { publicKey: await exportPublicKey(keyPairRef.current.publicKey) });
+        // hashed rooms have no key exchange, the person types the code instead
+        if (!hashedRef.current) {
+          try {
+            if (!keyPairRef.current) keyPairRef.current = await generateKeyPair();
+            if (!roomKeyRef.current) {
+              socket.emit("pubkey_exchange", { publicKey: await exportPublicKey(keyPairRef.current.publicKey) });
+            }
+          } catch (err) {
+            console.error("[e2e] key announce failed:", err);
           }
-        } catch (err) {
-          console.error("[e2e] key announce failed:", err);
         }
       }
       if (syncClusters?.length) {
@@ -243,6 +282,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       setTitle(data.title ?? '');
       setDescription(data.description ?? '');
       encryptedRef.current = !!data.encrypted;
+      hashedRef.current = !!data.hashedIdentity;
+      setHashed(!!data.hashedIdentity);
       if (socketIdRef.current) setIsCurator((data.curators ?? []).includes(socketIdRef.current));
       const decryptedClusters = await decryptClusters(data.clusters, data.encrypted, roomKeyRef.current);
       setClusters(decryptedClusters);
@@ -264,13 +305,57 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
         } else if (rows?.length) {
           const restored = rows.map(r => ({ id: r.submission_id, text: r.content }));
           setSubmissions(restored);
-          saveMySubmissions(code, restored);
+          persistMine(restored);
         }
       }
     } catch (err) {
       setError("Could not load session.");
     } finally {
       setLoading(false);
+    }
+  }
+
+  // hashed identity rooms: turn the typed code into the room key and test it against the key
+  // check the host's browser stored on the server. rooms without one (older ones) fall back to
+  // decrypting a stored question, and an empty room has nothing to test against.
+  async function unlock(input) {
+    const typed = normalizePasscode(input);
+    if (!typed) {
+      setUnlockError("That should be 6 letters or digits.");
+      return;
+    }
+    setUnlocking(true);
+    setUnlockError("");
+    try {
+      const key = await deriveRoomKeyFromPasscode(typed, code);
+      const res = await fetch(`${apiBase}/api/sessions/${code}`);
+      if (!res.ok) throw new Error("Session not found");
+      const data = await res.json();
+      let ok = true;
+      if (data.keyCheck) {
+        ok = await verifyKeyCheck(key, data.keyCheck);
+      } else {
+        const sample = data.submissions?.[0]?.content ?? data.clusters?.[0]?.representative_query;
+        if (sample) {
+          try {
+            const { ciphertext, nonce } = JSON.parse(sample);
+            await decryptText(key, ciphertext, nonce);
+          } catch {
+            ok = false;
+          }
+        }
+      }
+      if (!ok) {
+        setUnlockError("Wrong code. Case doesn't matter, dashes and spaces are ignored.");
+        return;
+      }
+      roomKeyRef.current = key;
+      setUnlocked(true);
+      await fetchSession();
+    } catch (err) {
+      setUnlockError(err.message ?? "Could not unlock.");
+    } finally {
+      setUnlocking(false);
     }
   }
 
@@ -297,7 +382,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       if (!res.ok) throw new Error(data.error);
       setSubmissions(prev => {
         const next = [...prev, { id: data.id, text }];
-        saveMySubmissions(code, next);
+        persistMine(next);
         return next;
       });
       // Skip the Supabase copy for encrypted sessions so plaintext never lands there.
@@ -323,7 +408,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       await fetch(`${apiBase}/api/sessions/${code}/submit/${submissionId}`, { method: "DELETE" });
       setSubmissions(prev => {
         const next = prev.filter(s => s.id !== submissionId);
-        saveMySubmissions(code, next);
+        persistMine(next);
         return next;
       });
       if (user) {
@@ -360,7 +445,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       if (!res.ok) throw new Error(data.error);
       setSubmissions(prev => {
         const next = [...prev, { id: data.id, text, clusterId }];
-        saveMySubmissions(code, next);
+        persistMine(next);
         return next;
       });
       // Skip the Supabase copy for encrypted sessions so plaintext never lands there (matches submitQuestion).
@@ -434,6 +519,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     onToggleDark,
     bgKey,
     onSelectBg,
+    look,
+    onSelectLook,
     submittedCount: submissions.length,
     inClusterCount,
   };
@@ -450,6 +537,24 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
           <div className="pd-waiting">
             <div className="pd-spinner" />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // hashed identity room and no code typed yet: nothing below can be read, so ask first
+  if (hashed && !unlocked) {
+    return (
+      <div className="pd-root">
+        <ParticipantHeader {...headerProps} />
+        {(title || description) && (
+          <div className="pd-session-context">
+            {title && <div className="pd-session-title">{title}</div>}
+            {description && <div className="pd-session-description">{description}</div>}
+          </div>
+        )}
+        <div className="pd-body">
+          <PasscodeCard role="participant" locked error={unlockError} busy={unlocking} onUnlock={unlock} />
         </div>
       </div>
     );

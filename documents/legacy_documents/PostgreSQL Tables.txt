@@ -83,3 +83,6 @@ GRANT ALL ON user_submissions TO service_role, anon;
 -- of the DROP/CREATE above if the tables already exist and hold data)
 -- ============================================================
 ALTER TABLE sessions ADD COLUMN IF NOT EXISTS encrypted boolean NOT NULL DEFAULT false;
+-- Hashed identity tier (both are needed by the passcode room option)
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS hashed_identity boolean NOT NULL DEFAULT false;
+ALTER TABLE sessions ADD COLUMN IF NOT EXISTS key_check text;

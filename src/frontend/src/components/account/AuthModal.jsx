@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { supabase } from "../lib/supabase.js";
-import { SITE_URL } from "../lib/api.js";
+import { supabase } from "../../lib/supabase.js";
+import { SITE_URL } from "../../lib/api.js";
 import "./Sidebar.css"; // reuses .am-* classes defined there
 
 function GoogleIcon() {

@@ -96,6 +96,71 @@ export async function loadRoomKey(code) {
   }
 }
 
+// ---- hashed identity tier: the room key comes from a 6 character passcode ----
+// no random room key, no localStorage. host is shown a passcode once at creation, and the key
+// is derived from it (PBKDF2-SHA-256, salted with the session code) every time the room is
+// opened. forget the passcode, lose the room. nobody can reset it, the server never had it.
+//
+// honest limit: 6 chars of a 32 letter alphabet is 30 bits. PBKDF2 makes each guess slow but
+// someone holding a copy of the database could still grind through every code offline.
+// that is the price of a code a human will actually type. E2E tier uses a random 256 bit key.
+
+// Crockford base32: no I, L, O, U, so nobody has to ask "is that a zero".
+const PASSCODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+export const PASSCODE_LENGTH = 6;
+const PASSCODE_ITERATIONS = 600_000; // OWASP 2023 floor for PBKDF2-HMAC-SHA256
+
+export function generatePasscode() {
+  // 256 is a multiple of 32, so masking the low 5 bits is uniform. no modulo bias.
+  const bytes = crypto.getRandomValues(new Uint8Array(PASSCODE_LENGTH));
+  return Array.from(bytes, b => PASSCODE_ALPHABET[b & 31]).join("");
+}
+
+// forgiving input: case, spaces and dashes are ignored, and the lookalikes fold the way
+// Crockford says they should (O -> 0, I and L -> 1). returns null if it can't be a passcode.
+export function normalizePasscode(input) {
+  const clean = String(input ?? "").toUpperCase().replace(/[\s-]/g, "")
+    .replace(/O/g, "0").replace(/[IL]/g, "1");
+  if (clean.length !== PASSCODE_LENGTH) return null;
+  return [...clean].every(ch => PASSCODE_ALPHABET.includes(ch)) ? clean : null;
+}
+
+// passcode + session code -> the AES-GCM room key. same inputs, same key, on any device.
+// extractable because wrapRoomKey has to export it to hand to joiners.
+export async function deriveRoomKeyFromPasscode(passcode, sessionCode) {
+  const base = await subtle.importKey("raw", encoder.encode(passcode), "PBKDF2", false, ["deriveKey"]);
+  return subtle.deriveKey(
+    {
+      name: "PBKDF2", hash: "SHA-256", iterations: PASSCODE_ITERATIONS,
+      salt: encoder.encode(`popularvote-passcode-v1:${sessionCode}`),
+    },
+    base,
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"],
+  );
+}
+
+// a typed passcode can be wrong, and a wrong one still derives a perfectly valid key. so the
+// host encrypts a fixed phrase with the real key and the server keeps the result (key_check).
+// anyone typing a passcode decrypts that phrase: it comes back right, or AES-GCM throws.
+// tells a typo from the real thing even in a room with no questions in it yet.
+const KEY_CHECK_PHRASE = "popularvote-key-check-v1";
+
+export async function makeKeyCheck(roomKey) {
+  const { ciphertext, nonce } = await encryptText(roomKey, KEY_CHECK_PHRASE);
+  return JSON.stringify({ ciphertext, nonce });
+}
+
+export async function verifyKeyCheck(roomKey, keyCheck) {
+  try {
+    const { ciphertext, nonce } = JSON.parse(keyCheck);
+    return (await decryptText(roomKey, ciphertext, nonce)) === KEY_CHECK_PHRASE;
+  } catch {
+    return false;
+  }
+}
+
 // ECDH -> HKDF -> AES-GCM key. only job this key got: wrap room key, nothing else.
 async function deriveWrapKey(privateKey, peerPublicKey) {
   const secret = await subtle.deriveBits({ name: "ECDH", public: peerPublicKey }, privateKey, 256);

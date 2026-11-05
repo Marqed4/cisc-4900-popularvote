@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import Home from './components/Home.jsx';
-import HostView from './components/Host.jsx';
-import Participant from './components/Participant.jsx';
-import Sidebar from './components/Sidebar.jsx';
-import AuthModal from './components/AuthModal.jsx';
+import { flushSync } from 'react-dom';
+import Home from './components/home/Home.jsx';
+import HostView from './components/host/Host.jsx';
+import Participant from './components/participant/Participant.jsx';
+import Sidebar from './components/account/Sidebar.jsx';
+import AuthModal from './components/account/AuthModal.jsx';
 import { DefaultBackgrounds } from './assets/backgrounds/index.js';
 import { supabase } from './lib/supabase.js';
 import './App.css';
 // shared styles (background picker modal, nav icon buttons) live here and are used by Host/Participant too
-import './components/Home.css';
-import "./components/foil-theme.css";
+import './components/home/Home.css';
+import "./components/theme/foil-theme.css";
 
 const BG_STORAGE_KEY = "pv-background";
 const CLEAR_ON_EXIT_KEY = "pv-clear-on-exit";
@@ -73,6 +74,53 @@ export default function App() {
   // Global theme + background, available across all pages
   const [bgKey,    setBgKey]    = useState(() => localStorage.getItem(BG_STORAGE_KEY) ?? "day_Sandstone");
   const [darkMode, setDarkMode] = useState(() => localStorage.getItem("pv-dark") === "true");
+
+  // visual look: "foil" (default) or "playful". CSS keys off data-look on <html>, see foil-theme.css section 12
+  const [look, setLook] = useState(() => localStorage.getItem("pv-look") === "playful" ? "playful" : "foil");
+  useEffect(() => {
+    document.documentElement.setAttribute("data-look", look);
+    localStorage.setItem("pv-look", look);
+  }, [look]);
+
+  // Foil <-> Playful, with a show. the page is snapshotted, the look flips underneath, and the
+  // new look is revealed through a circle that grows out of `origin` (the card that was clicked)
+  // while a thin ring in the new accent colour rides the edge. View Transitions API: where the
+  // browser lacks it, or the person asked for reduced motion, the look just changes.
+  // the attribute is set by hand inside the callback because the transition takes its "after"
+  // snapshot as soon as the callback returns, and a React effect would land a frame late.
+  function changeLook(next, origin) {
+    if (next === look) return;
+    const root = document.documentElement;
+    const apply = () => { root.setAttribute("data-look", next); setLook(next); };
+
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!document.startViewTransition || reduce) { apply(); return; }
+
+    const x = origin?.x ?? window.innerWidth / 2;
+    const y = origin?.y ?? window.innerHeight / 2;
+    // far enough to cover the whole viewport from wherever the circle starts
+    const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+    const duration = 750;
+    const easing = "cubic-bezier(0.65, 0, 0.35, 1)";
+
+    const transition = document.startViewTransition(() => { flushSync(apply); });
+    transition.ready.then(() => {
+      root.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+        { duration, easing, pseudoElement: "::view-transition-new(root)" },
+      );
+
+      const ring = document.createElement("div");
+      ring.className = "pv-look-ring";
+      ring.style.cssText = `left:${x - radius}px;top:${y - radius}px;width:${radius * 2}px;height:${radius * 2}px;`;
+      document.body.appendChild(ring);
+      const grow = ring.animate(
+        [{ transform: "scale(0)", opacity: 0.9 }, { transform: "scale(1)", opacity: 0 }],
+        { duration, easing },
+      );
+      grow.onfinish = grow.oncancel = () => ring.remove();
+    }).catch(() => {});
+  }
 
   const [clearOnExit, setClearOnExit] = useState(() => localStorage.getItem(CLEAR_ON_EXIT_KEY) === "true");
 
@@ -195,6 +243,8 @@ export default function App() {
   const themeProps = {
     bgKey, darkMode,
     onToggleDark: handleToggleDark,
+    look,
+    onSelectLook: changeLook,
     onSelectBg: handleSelectBg,
   };
 
@@ -221,6 +271,7 @@ export default function App() {
           initialTitle={view.title ?? ''}
           initialDescription={view.description ?? ''}
           initialEncrypted={view.encrypted ?? false}
+          initialHashedIdentity={view.hashedIdentity ?? false}
           user={user}
           onSessionCreated={code => saveSession(code, "host")}
           onBack={() => setView(null)}

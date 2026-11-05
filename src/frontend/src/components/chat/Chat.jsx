@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { API_BASE } from '../lib/api.js';
+import { API_BASE } from '../../lib/api.js';
 
 export default function Chat({ sessionContext = '' }) {
   const [messages, setMessages] = useState([]);

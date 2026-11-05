@@ -24,7 +24,7 @@ def _fetch_all(build_query):
 
 # --- sessions table -------------------------------------------------------------------------
 
-def create_session(code, tags=None, title='', description='', encrypted=False):
+def create_session(code, tags=None, title='', description='', encrypted=False, hashed_identity=False):
     # the row starts as OPEN with no curators. title, description and encrypted go in as
     # separate updates after, so an older schema missing those columns can still create rooms.
     tags = tags or []
@@ -44,7 +44,20 @@ def create_session(code, tags=None, title='', description='', encrypted=False):
         # let it raise so session_manager at least hears about it.
         supabase.table('sessions').update({'encrypted': True}).eq('code', code).execute()
 
+    if hashed_identity:
+        # same reasoning as encrypted: no try/except. a room that is meant to hide identities
+        # but is stored as plain would quietly send raw device ids after a restart. only runs
+        # when the option is on, so a schema without the hashed_identity column still works
+        # for every other room.
+        supabase.table('sessions').update({'hashed_identity': True}).eq('code', code).execute()
+
     return result.data
+
+
+def set_key_check(code, key_check):
+    # only fills an empty column (is null), so a second write is a no-op even if two servers race.
+    # no try/except: if the verifier didn't land, the host has to know, not find out at unlock time.
+    supabase.table('sessions').update({'key_check': key_check}).eq('code', code).is_('key_check', 'null').execute()
 
 
 def get_session(code):

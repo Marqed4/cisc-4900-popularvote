@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./ParticipantInput.css";
 
 const MAX_CHARS = 500;
@@ -14,6 +14,13 @@ export default function ParticipantInput({
   onDelete,
 }) {
   const [text, setText] = useState("");
+  // true for a moment after a successful submit, so the button can say so
+  const [justSent, setJustSent] = useState(false);
+  useEffect(() => {
+    if (!justSent) return;
+    const t = setTimeout(() => setJustSent(false), 1500);
+    return () => clearTimeout(t);
+  }, [justSent]);
   const isOpen = phase === "OPEN";
   const remaining = MAX_CHARS - text.length;
   const nearLimit = remaining <= 80;
@@ -24,7 +31,7 @@ export default function ParticipantInput({
     try {
       // return false from onSubmit on failure to keep the draft
       const ok = await onSubmit(trimmed);
-      if (ok !== false) setText("");
+      if (ok !== false) { setText(""); setJustSent(true); }
     } catch {
       // keep the draft so the person can retry
     }
@@ -43,12 +50,12 @@ export default function ParticipantInput({
           </span>
           <div className="pd-stats-row">
             <div className="pd-stat">
-              <span className="pd-stat-num">{submittedCount}</span>
+              <span key={submittedCount} className="pd-stat-num">{submittedCount}</span>
               <span className="pd-stat-label">submitted</span>
             </div>
             <div className="pd-stat-divider" />
             <div className="pd-stat">
-              <span className="pd-stat-num">{inClusterCount}</span>
+              <span key={inClusterCount} className="pd-stat-num">{inClusterCount}</span>
               <span className="pd-stat-label">in cluster</span>
             </div>
           </div>
@@ -70,11 +77,11 @@ export default function ParticipantInput({
                 {remaining} remaining · Ctrl+Enter to submit
               </span>
               <button
-                className="pd-btn-primary"
+                className={`pd-btn-primary ${justSent ? "pd-btn-primary--sent" : ""}`}
                 onClick={handleSubmit}
-                disabled={!text.trim() || submitLoading}
+                disabled={(!text.trim() && !justSent) || submitLoading}
               >
-                {submitLoading ? "Submitting…" : "Submit"}
+                {submitLoading ? "Submitting…" : justSent ? "Sent ✓" : "Submit"}
               </button>
             </div>
           </>

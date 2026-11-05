@@ -1,0 +1,73 @@
+/* inline passcode card for the hashed identity tier. sits at the top of .hd-main, in the flow. */
+.pv-passcode {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1rem;
+}
+.pv-passcode-eyebrow {
+  margin: 0 0 0.5rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+.pv-passcode-code { display: flex; gap: 0.4rem; margin-bottom: 0.75rem; }
+.pv-passcode-char {
+  flex: 0 0 auto;
+  width: 2.6rem;
+  padding: 0.45rem 0;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--bg, transparent);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  user-select: all;
+}
+.pv-passcode-note {
+  margin: 0 0 0.75rem;
+  font-family: var(--font-serif);
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+.pv-passcode-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+.pv-passcode-input {
+  width: 9rem;
+  padding: 0.5rem 0.75rem;
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+}
+.pv-passcode-input:focus { border-color: var(--text); box-shadow: 0 0 0 3px var(--focus-ring); }
+.pv-passcode-input[aria-invalid="true"] { border-color: #c0392b; }
+.pv-passcode-btn {
+  padding: 0.5rem 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+.pv-passcode-btn:hover:not(:disabled) { border-color: var(--text); }
+.pv-passcode-btn:disabled { opacity: 0.5; cursor: default; }
+.pv-passcode-btn--primary { color: var(--surface); background: var(--text); border-color: var(--text); }
+.pv-passcode-error { margin: 0.6rem 0 0; font-family: var(--font-serif); font-size: 0.85rem; color: #c0392b; }
+.pv-passcode--bar {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 0.5rem 0.9rem;
+}
+.pv-passcode--bar .pv-passcode-eyebrow { margin: 0; }

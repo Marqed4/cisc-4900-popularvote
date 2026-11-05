@@ -1,0 +1,493 @@
+/* ==========================================================================
+   foil-theme.css
+   Colour mapping taken from night_Foil.jpg, applied to buttons and trims.
+   Typeface: Bebas Neue (display + solid buttons).
+
+   LOAD ORDER: import this AFTER every other stylesheet (e.g. in main.jsx,
+   after `import App`). It overrides by order, not by !important.
+   ========================================================================== */
+
+/* Outfit is only used by the Playful look (section 12). @import has to come before any rule. */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;600;700&display=swap');
+
+/* --------------------------------------------------------------------------
+   1. Foil scale (sampled from the image; "derived" = interpolated)
+   -------------------------------------------------------------------------- */
+:root {
+  --foil-950: #230e20;   /* sampled  deep plum shadow   */
+  --foil-900: #391f30;   /* sampled                     */
+  --foil-800: #562637;   /* sampled  wine               */
+  --foil-700: #6e3548;   /* derived                     */
+  --foil-600: #834157;   /* sampled  crimson rose       */
+  --foil-500: #9b647d;   /* sampled  mauve (dominant)   */
+  --foil-400: #c28aa4;   /* derived                     */
+  --foil-300: #deb6c8;   /* sampled  pink highlight     */
+  --foil-100: #f6e9ef;   /* derived  tint               */
+
+  --btn-font:   var(--font-display);
+  --btn-radius: 10px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Semantic tokens: light
+   -------------------------------------------------------------------------- */
+:root {
+  --accent:          #834157;
+  --on-accent:       #ffffff;
+  --accent-soft:     rgba(131, 65, 87, 0.08);
+  --accent-soft-str: rgba(131, 65, 87, 0.16);
+  --trim:            rgba(131, 65, 87, 0.34);   /* outline buttons, dividers */
+  --trim-soft:       rgba(131, 65, 87, 0.16);   /* glass card edges          */
+  --focus-ring:      rgba(131, 65, 87, 0.24);
+
+  --border:          #e8dde2;
+  --border-str:      #d2bfc8;
+
+  --btn-solid:       linear-gradient(180deg, #8f4d63 0%, #783a4f 100%);
+  --btn-solid-edge:  #6e3548;
+  --btn-solid-hl:    rgba(255, 255, 255, 0.22);
+
+  --btn-alt-bg:      #562637;                   /* plum "secondary solid" */
+  --btn-alt-fg:      #f6e9ef;
+}
+
+/* --------------------------------------------------------------------------
+   3. Semantic tokens: dark
+   -------------------------------------------------------------------------- */
+[data-theme="dark"] {
+  --accent:          #deb6c8;
+  --on-accent:       #230e20;
+  --accent-soft:     rgba(222, 182, 200, 0.10);
+  --accent-soft-str: rgba(222, 182, 200, 0.20);
+  --trim:            rgba(222, 182, 200, 0.38);
+  --trim-soft:       rgba(222, 182, 200, 0.16);
+  --focus-ring:      rgba(222, 182, 200, 0.30);
+
+  --border:          #302630;
+  --border-str:      #4a3a46;
+
+  --btn-solid:       linear-gradient(180deg, #ecc6d6 0%, #d3a0b8 100%);
+  --btn-solid-edge:  #f3d6e2;
+  --btn-solid-hl:    rgba(255, 255, 255, 0.45);
+
+  --btn-alt-bg:      #653b52;
+  --btn-alt-fg:      #f6e9ef;
+}
+
+/* --------------------------------------------------------------------------
+   4. Display font: Bebas Neue only ships one weight (400).
+      Overrides the font-weight: 700 in each "display font" block.
+   -------------------------------------------------------------------------- */
+.pv-headline,
+.pv-wordmark-text,
+.pv-modal h2,
+.pd-header-label,
+.hd-header-label,
+.pd-card-title:not(.pd-card-title--sm),
+.pd-session-title,
+.pd-waiting-title,
+.pd-empty-title,
+.hd-session-title,
+.hd-clustering-title,
+.hd-waiting-title,
+.sb-title,
+.am-title,
+.sv-title {
+  font-weight: 400;
+  letter-spacing: 0.03em;
+}
+.pv-headline { letter-spacing: 0.02em; }
+
+/* --------------------------------------------------------------------------
+   5. Solid buttons (primary)
+   -------------------------------------------------------------------------- */
+:is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+    .am-magic-btn, .chat-send-btn):not(:disabled):not(.hd-btn-expand):not(.hd-btn-end) {
+  background: var(--btn-solid);
+  color: var(--on-accent);
+  border: 1px solid var(--btn-solid-edge);
+  box-shadow: inset 0 1px 0 var(--btn-solid-hl), 0 1px 3px rgba(0, 0, 0, 0.28);
+  text-shadow: none;
+  transition: filter 0.15s, transform 0.1s, box-shadow 0.15s;
+}
+:is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+    .am-magic-btn, .chat-send-btn):not(:disabled):not(.hd-btn-expand):not(.hd-btn-end):hover {
+  background: var(--btn-solid);
+  filter: brightness(1.07);
+  opacity: 1;
+}
+:is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+    .am-magic-btn, .chat-send-btn):not(:disabled):not(.hd-btn-expand):not(.hd-btn-end):active {
+  filter: brightness(0.94);
+  transform: translateY(1px);
+}
+
+/* Bebas on every solid button, including Expand and End */
+:is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+    .hd-btn-end, .hd-btn-expand, .am-magic-btn, .chat-send-btn) {
+  font-family: var(--btn-font);
+  font-weight: 400;
+  font-size: 1.15rem;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+}
+.pv-btn-create { font-size: 1.45rem; padding: 0.8rem 1.5rem; border-radius: 14px; }
+.hd-btn-save,
+.chat-send-btn { padding: 0.4rem 1.1rem; border-radius: var(--btn-radius); cursor: pointer; }
+.chat-send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Expand: plum secondary-solid so it reads as a sibling, not a rival */
+.hd-btn-expand:not(:disabled) {
+  background: var(--btn-alt-bg);
+  color: var(--btn-alt-fg);
+  border: 1px solid var(--trim);
+}
+.hd-btn-expand:hover:not(:disabled) { filter: brightness(1.12); opacity: 1; }
+
+/* End / Delete stay red: destructive must not read as "brand" */
+.hd-btn-end { font-size: 1.15rem; }
+
+/* --------------------------------------------------------------------------
+   6. Join button on the hero (glass, foil-edged)
+   -------------------------------------------------------------------------- */
+.pv-btn-join {
+  font-family: var(--btn-font);
+  font-weight: 400;
+  font-size: 1.25rem;
+  letter-spacing: 0.06em;
+  border: 1.5px solid var(--foil-300);
+  background: rgba(35, 14, 32, 0.5);
+  color: #fff;
+}
+.pv-btn-join:hover:not(:disabled) {
+  background: rgba(86, 38, 55, 0.7);
+  border-color: var(--foil-100);
+}
+.pv-code-input:focus,
+.pv-link-input:focus { border-color: var(--foil-300); }
+.pv-mode-btn.active { text-decoration-color: var(--foil-300); text-underline-offset: 4px; }
+
+/* --------------------------------------------------------------------------
+   7. Outline buttons (secondary)
+   -------------------------------------------------------------------------- */
+:is(.pd-btn-ghost, .hd-btn-ghost, .hd-btn-cancel, .am-google-btn,
+    .sv-download-btn, .sb-signin-btn, .hd-cluster-toggle) {
+  border: 1px solid var(--trim);
+  color: var(--text);
+}
+:is(.pd-btn-ghost, .hd-btn-ghost, .hd-btn-cancel, .am-google-btn,
+    .sv-download-btn, .sb-signin-btn, .hd-cluster-toggle):hover:not(:disabled) {
+  background: var(--accent-soft-str);
+  border-color: var(--accent);
+  color: var(--text);
+}
+:is(.pd-btn-ghost, .hd-btn-ghost, .hd-btn-cancel, .sv-download-btn):disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* Dashed "add / edit" buttons */
+:is(.pd-add-q-btn, .hd-btn-edit-answer) {
+  border: 1px dashed var(--trim);
+  color: var(--text-2);
+}
+:is(.pd-add-q-btn, .hd-btn-edit-answer):hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--text);
+}
+.hd-answer-display.no-answer { border-color: var(--trim); }
+
+/* --------------------------------------------------------------------------
+   8. Pills, chips, toggles, selected states
+   -------------------------------------------------------------------------- */
+.pd-upvote-btn { border-color: var(--trim); }
+.pd-upvote-btn:hover { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.pd-upvote-btn.pd-upvote-btn--voted,
+.pd-upvote-btn--voted:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.pd-followup-chip { border-color: var(--trim); }
+.pd-followup-chip:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); color: var(--text); }
+.pd-followup-chip.pd-followup-chip--done { border-color: var(--green-bd); }
+
+.hd-sort-btn.hd-sort-btn--active { background: var(--accent); color: var(--on-accent); }
+
+.hd-preview-item:hover { border-color: var(--trim); }
+.hd-preview-item.selected { border-color: var(--accent); background: var(--accent-soft-str); }
+.hd-preview-item.selected .hd-preview-check { color: var(--accent); }
+
+.pv-bg-option.active { border-color: var(--accent); }
+
+.hd-tag,
+.hd-tag-input-row { border-color: var(--trim); }
+.hd-tag-add-btn { border-left-color: var(--trim); }
+.hd-tag-add-btn:hover { background: var(--accent-soft-str); color: var(--text); }
+
+/* Avatar + numbered badges sit on --accent, so their text must flip with it */
+.sb-avatar,
+.sv-cluster-num { background: var(--accent); color: var(--on-accent); }
+
+/* --------------------------------------------------------------------------
+   9. Icon buttons and header controls
+   -------------------------------------------------------------------------- */
+.pv-nav-btn:hover,
+.pv-nav-icon-btn:hover,
+.pv-nav-hamburger:hover,
+.pd-hamburger:hover,
+.hd-hamburger:hover,
+.pd-header .pv-nav-icon-btn:hover,
+.hd-header .pv-nav-icon-btn:hover { background: var(--accent-soft-str); }
+
+.pv-nav-hamburger:hover span { background: var(--foil-100); }
+.pv-nav-btn:hover,
+.pv-nav-icon-btn:hover { color: var(--foil-100); }
+
+/* --------------------------------------------------------------------------
+   10. Trims: edges, dividers, focus
+   -------------------------------------------------------------------------- */
+[data-theme] :is(.pd-card, .hd-cluster, .sv-cluster) { border-color: var(--trim-soft); }
+[data-theme] :is(.hd-session-context, .hd-sidebar-shell) { border-color: var(--trim-soft); }
+.pv-nav { border-bottom-color: rgba(222, 182, 200, 0.22); }
+.hd-expansion { border-top-color: var(--trim); }
+.hd-manual-input { border-left-color: var(--accent); }
+
+.pv-field-input:focus,
+.hd-answer-textarea:focus,
+.hd-notes-textarea:focus,
+.hd-manual-input:focus,
+.am-email-input:focus { border-color: var(--accent); }
+
+::selection { background: var(--accent-soft-str); }
+
+/* --------------------------------------------------------------------------
+   11. Chat (was using variables that do not exist elsewhere in the app)
+   -------------------------------------------------------------------------- */
+.chat-root { --border-radius-lg: 14px; --border-radius-md: 10px; }
+.chat-bubble--user      { background: var(--accent-soft-str); color: var(--text); border: 1px solid var(--trim-soft); }
+.chat-bubble--assistant { background: var(--surface-sub);     color: var(--text); }
+.chat-thinking          { color: var(--text-3); }
+.chat-input-bar         { border-top: 1px solid var(--border); }
+.chat-textarea          { background: var(--surface-sub); color: var(--text); border: 1px solid var(--border-str); font-family: var(--font-sans); }
+.chat-textarea:focus    { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); }
+
+/* ==========================================================================
+   12. Playful look
+   Opt in with data-look="playful" on <html>. It is picked in the appearance
+   picker (gear icon) and App.jsx sets the attribute. Foil stays the default:
+   everything below is scoped, so with Foil on none of it applies.
+
+   The brief: friendly, not childish. Rounded type, one violet accent, soft
+   offset shadows and a little spring in the motion. Pink and mint are seasoning,
+   not the meal. Colour and shape sit outside the motion block, and all movement
+   sits inside it so reduced-motion users get none.
+   ========================================================================== */
+[data-look="playful"] {
+  --font-display: 'Outfit', system-ui, sans-serif;
+  --pv-pink:   #f0689f;
+  --pv-mint:   #2fbf93;
+  --pv-line:   #34306a;                 /* outline on cards and buttons */
+  --pv-shadow: rgba(52, 48, 106, 0.22); /* soft offset shadow, not a hard block */
+  --pv-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+
+  --accent: #6c4cf1;  --on-accent: #ffffff;
+  --accent-soft: rgba(108, 76, 241, 0.10);  --accent-soft-str: rgba(108, 76, 241, 0.20);
+  --trim: #34306a;  --trim-soft: rgba(52, 48, 106, 0.24);
+  --focus-ring: rgba(108, 76, 241, 0.35);
+  --border: #ddd6f7;  --border-str: #c4b8f5;
+  --btn-solid: #6c4cf1;  --btn-solid-edge: #34306a;  --btn-solid-hl: transparent;
+  --btn-alt-bg: #efebff;  --btn-alt-fg: #34306a;  --btn-radius: 12px;
+  --surface: #ffffff;  --surface-sub: #f4f1ff;
+  --text: #25234f;  --text-2: #4a477a;  --text-3: #6d699b;
+  --green: #0e9f6e;  --green-bg: #e1faf0;  --green-bd: #9be8cf;
+  --blue: #5a3fd6;  --blue-bg: #efebff;  --blue-bd: #cbbfff;
+  --red: #e5484d;  --delete-hover-bg: rgba(229, 72, 77, 0.12);
+}
+[data-look="playful"][data-theme="dark"] {
+  --pv-line: #8f82e0;
+  --pv-shadow: rgba(7, 6, 26, 0.55);
+
+  --accent: #a995ff;  --on-accent: #1d1b3d;
+  --accent-soft: rgba(169, 149, 255, 0.12);  --accent-soft-str: rgba(169, 149, 255, 0.22);
+  --trim: #b8acf5;  --trim-soft: rgba(184, 172, 245, 0.25);
+  --focus-ring: rgba(169, 149, 255, 0.38);
+  --border: #3a3470;  --border-str: #51499a;
+  --btn-solid: #a995ff;  --btn-solid-edge: #07061a;
+  --btn-alt-bg: #2d2860;  --btn-alt-fg: #f3f0ff;
+  --surface: #221e45;  --surface-sub: #2d2860;
+  --text: #f3f0ff;  --text-2: #cfc8f5;  --text-3: #a49cd6;
+  --green: #3dd9a8;  --green-bg: #0e2f2a;  --green-bd: #1d7a62;
+  --blue: #b9a8ff;  --blue-bg: #231f4d;  --blue-bd: #4a3fb3;
+  --red: #ff7a7f;  --delete-hover-bg: rgba(255, 122, 127, 0.16);
+}
+
+/* Outfit is a regular-width face with real weights, so display text drops a size from Bebas */
+[data-look="playful"] :is(.pv-headline, .pv-wordmark-text, .pv-modal h2, .pd-header-label, .hd-header-label,
+  .pd-card-title:not(.pd-card-title--sm), .pd-session-title, .pd-waiting-title, .pd-empty-title,
+  .hd-session-title, .hd-clustering-title, .hd-waiting-title, .sb-title, .am-title, .sv-title) {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+[data-look="playful"] .pv-headline { font-size: clamp(2.6rem, 7.5vw, 4.4rem); line-height: 1.05; }
+[data-look="playful"] .pv-wordmark-text { font-size: 1.15rem; }
+[data-look="playful"] .pv-modal h2 { font-size: 1.5rem; }
+[data-look="playful"] :is(.pd-session-title, .hd-session-title) { font-size: 1.4rem; }
+[data-look="playful"] :is(.pd-waiting-title, .hd-clustering-title) { font-size: 1.5rem; }
+[data-look="playful"] .hd-waiting-title { font-size: 1.9rem; }
+[data-look="playful"] :is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+  .hd-btn-end, .hd-btn-expand, .am-magic-btn, .chat-send-btn, .pv-btn-join) {
+  font-size: 1rem; font-weight: 600; letter-spacing: 0;
+}
+[data-look="playful"] .pv-btn-create { font-size: 1.2rem; border-radius: 14px; }
+
+/* Solid buttons: a slim outline and a soft drop. The :not chain matches foil section 5 so these win. */
+[data-look="playful"] :is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+    .am-magic-btn, .chat-send-btn):not(:disabled):not(.hd-btn-expand):not(.hd-btn-end) {
+  border: 1.5px solid var(--pv-line);
+  box-shadow: 0 3px 0 var(--pv-shadow);
+}
+[data-look="playful"] :is(.hd-btn-expand, .hd-btn-end) {
+  border: 1.5px solid var(--pv-line);
+  border-radius: 12px;
+  box-shadow: 0 3px 0 var(--pv-shadow);
+}
+[data-look="playful"] .pv-btn-join {
+  background: var(--btn-alt-bg); color: var(--btn-alt-fg);
+  border: 1.5px solid var(--pv-line); border-radius: 12px;
+  box-shadow: 0 3px 0 var(--pv-shadow);
+}
+[data-look="playful"] .pv-btn-join:hover:not(:disabled) { background: var(--accent-soft-str); border-color: var(--pv-line); }
+[data-look="playful"] .pd-btn-primary.pd-btn-primary--sent:not(:disabled):not(.hd-btn-expand):not(.hd-btn-end) {
+  background: var(--pv-mint); color: #0d2e25;
+}
+
+/* outline buttons and chips */
+[data-look="playful"] :is(.pd-btn-ghost, .hd-btn-ghost, .hd-btn-cancel, .am-google-btn,
+    .sv-download-btn, .sb-signin-btn, .hd-cluster-toggle) {
+  border: 1.5px solid var(--pv-line);
+  border-radius: 10px;
+}
+[data-look="playful"] :is(.pd-upvote-btn, .pd-followup-chip) {
+  border: 1.5px solid var(--pv-line);
+  border-radius: 999px;
+}
+[data-look="playful"] .pd-upvote-btn { position: relative; }
+[data-look="playful"] .pd-followup-chip.pd-followup-chip--done { border-color: var(--green); }
+
+/* cards are opaque with a soft offset shadow instead of frosted glass */
+[data-look="playful"] :is(.pd-card, .pd-cluster, .hd-cluster, .sv-cluster, .pv-modal, .pv-passcode) {
+  background: var(--surface);
+  border: 1.5px solid var(--pv-line);
+  border-radius: 16px;
+  box-shadow: 4px 4px 0 var(--pv-shadow);
+}
+[data-look="playful"] .pd-cluster--mine { border-color: var(--accent); box-shadow: 4px 4px 0 var(--accent-soft-str); }
+[data-look="playful"] .hd-cluster--readonly { box-shadow: none; }
+/* privacy tier cards in the new-session modal, and the passcode digits */
+[data-look="playful"] .pv-tier { border-width: 1.5px; border-radius: 12px; }
+[data-look="playful"] .pv-tier--on { border-color: var(--accent); background: var(--accent-soft); }
+[data-look="playful"] .pv-passcode-char { border-width: 1.5px; border-radius: 10px; }
+
+/* ---- motion: only for people who have not asked for less ---- */
+@media (prefers-reduced-motion: no-preference) {
+  [data-look="playful"] :is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+      .am-magic-btn, .chat-send-btn, .hd-btn-expand, .hd-btn-end, .pv-btn-join,
+      .pd-btn-ghost, .hd-btn-ghost, .hd-btn-cancel, .am-google-btn, .sv-download-btn,
+      .sb-signin-btn, .hd-cluster-toggle, .pd-upvote-btn, .pd-followup-chip, .pd-add-q-btn,
+      .pv-nav-icon-btn, .pd-cluster, .hd-cluster) {
+    transition: transform 0.2s var(--pv-spring), box-shadow 0.2s var(--pv-spring),
+      background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  /* lift when hovered, press into the shadow when clicked. the :not chain again, to beat foil's hover and active */
+  [data-look="playful"] :is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+      .am-magic-btn, .chat-send-btn):not(:disabled):not(.hd-btn-expand):not(.hd-btn-end):hover {
+    transform: translateY(-1px); box-shadow: 0 4px 0 var(--pv-shadow); filter: none;
+  }
+  [data-look="playful"] :is(.pv-btn-create, .pd-btn-primary, .hd-btn-primary, .hd-btn-save,
+      .am-magic-btn, .chat-send-btn):not(:disabled):not(.hd-btn-expand):not(.hd-btn-end):active {
+    transform: translateY(2px) scale(0.98); box-shadow: 0 1px 0 var(--pv-shadow); filter: none;
+  }
+  [data-look="playful"] :is(.hd-btn-expand, .hd-btn-end, .pv-btn-join):not(:disabled):hover {
+    transform: translateY(-1px); box-shadow: 0 4px 0 var(--pv-shadow);
+  }
+  [data-look="playful"] :is(.hd-btn-expand, .hd-btn-end, .pv-btn-join):not(:disabled):active {
+    transform: translateY(2px) scale(0.98); box-shadow: 0 1px 0 var(--pv-shadow);
+  }
+  [data-look="playful"] :is(.pd-btn-ghost, .hd-btn-ghost, .hd-btn-cancel, .am-google-btn, .sv-download-btn,
+      .sb-signin-btn, .hd-cluster-toggle, .pd-upvote-btn, .pd-followup-chip, .pd-add-q-btn):not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+  [data-look="playful"] :is(.pd-btn-ghost, .hd-btn-ghost, .hd-btn-cancel, .am-google-btn, .sv-download-btn,
+      .sb-signin-btn, .hd-cluster-toggle, .pd-upvote-btn, .pd-followup-chip, .pd-add-q-btn, .pv-nav-icon-btn):not(:disabled):active {
+    transform: scale(0.94);
+  }
+  [data-look="playful"] .pv-nav-icon-btn:hover { transform: scale(1.08); }
+  [data-look="playful"] :is(.pd-cluster, .hd-cluster:not(.hd-cluster--readonly)):hover {
+    transform: translate(-1px, -1px); box-shadow: 6px 6px 0 var(--pv-shadow);
+  }
+
+  /* things arriving: questions in the host feed, your own submissions, clusters, modals */
+  [data-look="playful"] :is(.hd-submission-feed-item, .pd-submission-item, .pd-cluster, .hd-cluster, .pv-modal) {
+    animation: pv-pop-in 0.4s var(--pv-spring) backwards;
+  }
+  [data-look="playful"] :is(.pd-cluster, .hd-cluster):nth-child(3) { animation-delay: 0.05s; }
+  [data-look="playful"] :is(.pd-cluster, .hd-cluster):nth-child(4) { animation-delay: 0.1s; }
+  [data-look="playful"] :is(.pd-cluster, .hd-cluster):nth-child(5) { animation-delay: 0.15s; }
+  [data-look="playful"] :is(.pd-cluster, .hd-cluster):nth-child(6) { animation-delay: 0.2s; }
+  [data-look="playful"] :is(.pd-cluster, .hd-cluster):nth-child(n+7) { animation-delay: 0.25s; }
+
+  /* counters bump when their number changes (the JSX gives them a key) */
+  [data-look="playful"] :is(.pd-stat-num, .hd-stat-num) {
+    display: inline-block; animation: pv-bump 0.45s var(--pv-spring);
+  }
+
+  /* upvote: the button pops, the number rolls in, and a small burst of dots */
+  [data-look="playful"] .pd-upvote-btn--pop { animation: pv-pop 0.4s var(--pv-spring); }
+  [data-look="playful"] .pd-upvote-btn--pop .pd-upvote-num {
+    display: inline-block; animation: pv-tick 0.4s var(--pv-spring);
+  }
+  [data-look="playful"] .pd-burst {
+    position: absolute; left: 1.1em; top: 50%; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent); pointer-events: none;
+    box-shadow: 0 -13px 0 var(--pv-pink), 11px -7px 0 var(--pv-mint), 11px 7px 0 var(--accent),
+      0 13px 0 var(--pv-pink), -11px 7px 0 var(--pv-mint), -11px -7px 0 var(--accent);
+    animation: pv-burst 0.55s ease-out forwards;
+  }
+
+  /* submit: the button says "Sent" and pops */
+  [data-look="playful"] .pd-btn-primary--sent { animation: pv-pop 0.4s var(--pv-spring); }
+
+  @keyframes pv-pop-in { from { opacity: 0; transform: translateY(10px) scale(0.97); } }
+  @keyframes pv-bump {
+    35% { transform: scale(1.3); }
+    65% { transform: scale(0.95); }
+  }
+  @keyframes pv-pop {
+    35% { transform: scale(1.12); }
+    65% { transform: scale(0.97); }
+  }
+  @keyframes pv-tick { from { opacity: 0; transform: translateY(70%); } }
+  @keyframes pv-burst {
+    from { opacity: 1; transform: translate(-50%, -50%) scale(0.2); }
+    to   { opacity: 0; transform: translate(-50%, -50%) scale(1.6); }
+  }
+}
+
+/* ---- the Foil <-> Playful switch ----
+   App.jsx wraps the change in a View Transition and animates the new look as a circle that
+   grows out of the control you clicked. These rules only turn off the browser's default
+   crossfade so the circle is the whole show. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+::view-transition-old(root) { z-index: 1; }
+::view-transition-new(root) { z-index: 2; }
+.pv-look-ring {
+  position: fixed; z-index: 2147483647; pointer-events: none; border-radius: 50%;
+  border: 3px solid var(--accent); box-sizing: border-box;
+}

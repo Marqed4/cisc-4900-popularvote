@@ -22,12 +22,13 @@ def create_session():
         title = body.get('title', '')
         description = body.get('description', '')
         encrypted = bool(body.get('encrypted', False))
+        hashed_identity = bool(body.get('hashedIdentity', False))
         session_manager = current_app.session_manager
-        session = session_manager.create_session(tags, title, description, encrypted)
+        session = session_manager.create_session(tags, title, description, encrypted, hashed_identity)
         return jsonify({
             'code': session['code'], 'phase': session['phase'], 'tags': session['tags'],
             'title': session['title'], 'description': session['description'],
-            'encrypted': session['encrypted'],
+            'encrypted': session['encrypted'], 'hashedIdentity': session['hashedIdentity'],
         })
     except Exception as err:
         print(err)
@@ -429,10 +430,34 @@ def get_session(code):
             'curators': session.get('curators') or [],
             'contextualFacts': session.get('contextualFacts') or [],
             'encrypted': session.get('encrypted') or False,
+            'hashedIdentity': session.get('hashedIdentity') or False,
+            'keyCheck': session.get('keyCheck'),
         })
     except Exception as err:
         print(err)
         return jsonify({'error': 'Failed to load the session, my guy'}), 500
+
+
+@sessions_bp.route('/sessions/<code>/key-check', methods=['POST'])
+def set_key_check(code):
+    # the host's browser posts an encrypted canary right after creating a hashed identity room.
+    # the server can't read it. everyone else uses it to tell a right passcode from a typo.
+    try:
+        body = request.get_json(silent=True) or {}
+        key_check = body.get('keyCheck')
+        if not isinstance(key_check, str) or not key_check or len(key_check) > 500:
+            return jsonify({'error': 'keyCheck is required'}), 400
+
+        current_app.session_manager.set_key_check(code, key_check)
+        return jsonify({'keyCheck': key_check})
+    except ValueError as err:
+        status = 404 if str(err) == 'Session not found' else 400
+        return jsonify({'error': str(err)}), status
+    except PermissionError as err:
+        return jsonify({'error': str(err)}), 409
+    except Exception as err:
+        print(err)
+        return jsonify({'error': 'Failed to save key check'}), 500
 
 
 @sessions_bp.route('/sessions/<code>/end', methods=['POST'])

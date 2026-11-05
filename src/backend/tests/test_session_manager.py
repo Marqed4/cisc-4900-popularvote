@@ -119,3 +119,82 @@ class TestRecordViewer:
 
     def test_unknown_session_is_ignored(self, manager):
         assert manager.record_viewer('NOPE00', 'device-0001') is False
+
+
+class TestSetKeyCheck:
+    def test_stores_the_check_once_for_a_hashed_identity_room(self, manager):
+        code = manager.create_session(encrypted=True, hashed_identity=True)['code']
+
+        manager.set_key_check(code, '{"ciphertext":"x","nonce":"y"}')
+
+        assert manager.sessions[code]['keyCheck'] == '{"ciphertext":"x","nonce":"y"}'
+        session_manager_module.SessionStore.set_key_check.assert_called_once_with(code, '{"ciphertext":"x","nonce":"y"}')
+
+    def test_second_write_is_refused(self, manager):
+        code = manager.create_session(encrypted=True, hashed_identity=True)['code']
+        manager.set_key_check(code, 'first')
+
+        with pytest.raises(PermissionError, match='already set'):
+            manager.set_key_check(code, 'second')
+
+        assert manager.sessions[code]['keyCheck'] == 'first'
+
+    def test_rooms_without_a_passcode_refuse_it(self, manager):
+        code = manager.create_session(encrypted=True)['code']
+
+        with pytest.raises(ValueError, match='does not use a passcode'):
+            manager.set_key_check(code, 'x')
+
+
+class TestHashedIdentityFlag:
+    def test_defaults_to_off_with_no_key_check(self, manager):
+        session = manager.create_session()
+
+        assert session['hashedIdentity'] is False
+        assert session['keyCheck'] is None
+
+    def test_is_stored_on_the_session_and_forwarded_to_the_store(self, manager):
+        session = manager.create_session(encrypted=True, hashed_identity=True)
+
+        assert session['hashedIdentity'] is True
+        session_manager_module.SessionStore.create_session.assert_called_once_with(
+            session['code'], [], '', '', True, True,
+        )
+
+    def test_unknown_session_cannot_take_a_key_check(self, manager):
+        session_manager_module.SessionStore.get_session.side_effect = Exception('not found')
+
+        with pytest.raises(ValueError, match='Session not found'):
+            manager.set_key_check('NOPE00', 'x')
+
+
+class TestGetSessionAsyncTierFlags:
+    def _row(self, **extra):
+        return {'code': 'ABC123', 'phase': 'OPEN', **extra}
+
+    def _load(self, manager, row):
+        store = session_manager_module.SessionStore
+        store.get_session.return_value = row
+        store.get_submissions.return_value = []
+        store.get_clusters.return_value = []
+        return manager.get_session_async('ABC123')
+
+    def test_rebuilds_the_tier_flags_and_key_check_from_the_row(self, manager):
+        session = self._load(manager, self._row(encrypted=True, hashed_identity=True, key_check='blob'))
+
+        assert session['encrypted'] is True
+        assert session['hashedIdentity'] is True
+        assert session['keyCheck'] == 'blob'
+
+    def test_null_columns_on_old_rows_read_as_the_normal_tier(self, manager):
+        session = self._load(manager, self._row(encrypted=None, hashed_identity=None))
+
+        assert session['encrypted'] is False
+        assert session['hashedIdentity'] is False
+        assert session['keyCheck'] is None
+
+    def test_rows_missing_the_columns_entirely_read_as_the_normal_tier(self, manager):
+        session = self._load(manager, self._row())
+
+        assert session['encrypted'] is False
+        assert session['hashedIdentity'] is False

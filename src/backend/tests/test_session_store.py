@@ -73,6 +73,67 @@ class TestCreateSession:
         table_mock.update.assert_not_called()
 
 
+    def test_writes_hashed_identity_column_when_requested(self, monkeypatch):
+        table_mock = MagicMock()
+        table_mock.insert.return_value = _chain([{}])
+        table_mock.update.return_value.eq.return_value = _chain(None)
+        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
+
+        session_store.create_session('ABC123', encrypted=True, hashed_identity=True)
+
+        table_mock.update.assert_any_call({'encrypted': True})
+        table_mock.update.assert_any_call({'hashed_identity': True})
+
+    def test_does_not_touch_hashed_identity_column_by_default(self, monkeypatch):
+        # an older schema without the column must keep working for every other room
+        table_mock = MagicMock()
+        table_mock.insert.return_value = _chain([{}])
+        table_mock.update.return_value.eq.return_value = _chain(None)
+        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
+
+        session_store.create_session('ABC123', encrypted=True)
+
+        written = [c.args[0] for c in table_mock.update.call_args_list]
+        assert {'hashed_identity': True} not in written
+
+    def test_hashed_identity_write_failure_is_not_swallowed(self, monkeypatch):
+        table_mock = MagicMock()
+        table_mock.insert.return_value = _chain([{}])
+
+        def update(fields):
+            if 'hashed_identity' in fields:
+                raise Exception('column "hashed_identity" does not exist')
+            return MagicMock(eq=MagicMock(return_value=_chain(None)))
+
+        table_mock.update.side_effect = update
+        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
+
+        with pytest.raises(Exception, match='hashed_identity'):
+            session_store.create_session('ABC123', encrypted=True, hashed_identity=True)
+
+
+class TestSetKeyCheck:
+    def test_only_fills_an_empty_column(self, monkeypatch):
+        table_mock = MagicMock()
+        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
+
+        session_store.set_key_check('ABC123', 'blob')
+
+        table_mock.update.assert_called_once_with({'key_check': 'blob'})
+        eq = table_mock.update.return_value.eq
+        eq.assert_called_once_with('code', 'ABC123')
+        eq.return_value.is_.assert_called_once_with('key_check', 'null')
+        eq.return_value.is_.return_value.execute.assert_called_once()
+
+    def test_database_errors_are_not_swallowed(self, monkeypatch):
+        table_mock = MagicMock()
+        table_mock.update.return_value.eq.return_value.is_.return_value.execute.side_effect = Exception('db down')
+        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
+
+        with pytest.raises(Exception, match='db down'):
+            session_store.set_key_check('ABC123', 'blob')
+
+
 class TestAddSubmission:
     def test_inserts_content_under_session_code(self, monkeypatch):
         table_mock = MagicMock()

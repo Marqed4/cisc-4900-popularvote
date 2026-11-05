@@ -169,3 +169,119 @@ class TestSubmitToCluster:
         broadcast_text = broadcast_call.args[1]['question']['text']
         assert broadcast_text != 'secret-plaintext'
         assert '"ciphertext": "secret-plaintext"' in broadcast_text
+
+
+class TestSetKeyCheckRoute:
+    def test_saves_and_returns_the_key_check(self, client, fake_session_manager):
+        res = client.post('/api/sessions/ABC123/key-check', json={'keyCheck': 'blob'})
+
+        assert res.status_code == 200
+        fake_session_manager.set_key_check.assert_called_once_with('ABC123', 'blob')
+
+    def test_rejects_a_missing_key_check(self, client, fake_session_manager):
+        res = client.post('/api/sessions/ABC123/key-check', json={})
+
+        assert res.status_code == 400
+        fake_session_manager.set_key_check.assert_not_called()
+
+    def test_second_write_is_a_conflict(self, client, fake_session_manager):
+        fake_session_manager.set_key_check.side_effect = PermissionError('Key check is already set')
+
+        res = client.post('/api/sessions/ABC123/key-check', json={'keyCheck': 'blob'})
+
+        assert res.status_code == 409
+
+    def test_unknown_session_is_404(self, client, fake_session_manager):
+        fake_session_manager.set_key_check.side_effect = ValueError('Session not found')
+
+        res = client.post('/api/sessions/NOPE00/key-check', json={'keyCheck': 'blob'})
+
+        assert res.status_code == 404
+
+    def test_rejects_a_non_string_key_check(self, client, fake_session_manager):
+        res = client.post('/api/sessions/ABC123/key-check', json={'keyCheck': {'ciphertext': 'x'}})
+
+        assert res.status_code == 400
+        fake_session_manager.set_key_check.assert_not_called()
+
+    def test_rejects_an_oversized_key_check(self, client, fake_session_manager):
+        res = client.post('/api/sessions/ABC123/key-check', json={'keyCheck': 'x' * 501})
+
+        assert res.status_code == 400
+        fake_session_manager.set_key_check.assert_not_called()
+
+    def test_room_without_a_passcode_is_a_400(self, client, fake_session_manager):
+        fake_session_manager.set_key_check.side_effect = ValueError('Session does not use a passcode')
+
+        res = client.post('/api/sessions/ABC123/key-check', json={'keyCheck': 'blob'})
+
+        assert res.status_code == 400
+
+    def test_unexpected_failure_is_a_500(self, client, fake_session_manager):
+        fake_session_manager.set_key_check.side_effect = RuntimeError('boom')
+
+        res = client.post('/api/sessions/ABC123/key-check', json={'keyCheck': 'blob'})
+
+        assert res.status_code == 500
+
+
+class TestCreateSessionRoute:
+    def _created(self, **flags):
+        return {
+            'code': 'ABC123', 'phase': 'OPEN', 'tags': [], 'title': '', 'description': '',
+            'encrypted': False, 'hashedIdentity': False, **flags,
+        }
+
+    def test_forwards_both_tier_flags_to_the_manager(self, client, fake_session_manager):
+        fake_session_manager.create_session.return_value = self._created(encrypted=True, hashedIdentity=True)
+
+        res = client.post('/api/sessions', json={'title': 'T', 'encrypted': True, 'hashedIdentity': True})
+
+        fake_session_manager.create_session.assert_called_once_with([], 'T', '', True, True)
+        assert res.get_json()['encrypted'] is True
+        assert res.get_json()['hashedIdentity'] is True
+
+    def test_flags_default_to_the_normal_tier(self, client, fake_session_manager):
+        fake_session_manager.create_session.return_value = self._created()
+
+        client.post('/api/sessions', json={})
+
+        fake_session_manager.create_session.assert_called_once_with([], '', '', False, False)
+
+    def test_encrypted_without_hashed_identity_is_the_middle_tier(self, client, fake_session_manager):
+        fake_session_manager.create_session.return_value = self._created(encrypted=True)
+
+        res = client.post('/api/sessions', json={'encrypted': True})
+
+        fake_session_manager.create_session.assert_called_once_with([], '', '', True, False)
+        assert res.get_json()['hashedIdentity'] is False
+
+
+class TestGetSessionRoute:
+    def _full(self, **extra):
+        return {'code': 'ABC123', 'phase': 'OPEN', 'tags': [], **extra}
+
+    def test_returns_the_tier_flags_and_key_check(self, client, fake_session_manager):
+        fake_session_manager.get_session_async.return_value = self._full(
+            encrypted=True, hashedIdentity=True, keyCheck='blob',
+        )
+
+        body = client.get('/api/sessions/ABC123').get_json()
+
+        assert body['encrypted'] is True
+        assert body['hashedIdentity'] is True
+        assert body['keyCheck'] == 'blob'
+
+    def test_sessions_missing_the_flags_read_as_the_normal_tier(self, client, fake_session_manager):
+        fake_session_manager.get_session_async.return_value = self._full()
+
+        body = client.get('/api/sessions/ABC123').get_json()
+
+        assert body['encrypted'] is False
+        assert body['hashedIdentity'] is False
+        assert body['keyCheck'] is None
+
+    def test_unknown_session_is_404(self, client, fake_session_manager):
+        fake_session_manager.get_session_async.return_value = None
+
+        assert client.get('/api/sessions/NOPE00').status_code == 404
