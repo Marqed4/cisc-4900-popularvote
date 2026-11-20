@@ -89,7 +89,7 @@ def main():
         check('curators round-trips as a list (jsonb)', row['curators'] == ['abc', 'def'], row['curators'])
 
         blob = json.dumps({'ciphertext': 'Zm9v', 'nonce': 'YmFy'})
-        sub = admin.table('submissions').insert({
+        admin.table('submissions').insert({
             'session_code': CODE, 'content': blob, 'is_curator': False,
         }).execute().data[0]
         got = admin.table('submissions').select('*').eq('session_code', CODE).execute().data
