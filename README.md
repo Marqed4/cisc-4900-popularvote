@@ -11,7 +11,10 @@ The application supports several key workflows:
 - **Host Responses**: Session leaders and promoted curators answer clustered questions collectively
 - **Real-time Engagement**: Participants upvote questions and view responses live over WebSockets
 - **Session Expansion & RAG Suggestions**: Hosts can upload notes (PDF) to seed suggested answers and a chat flow
-- **Optional End-to-End Encryption**: Sessions can opt into per-session encryption, where submission content and clustering happen client-side and the server only relays opaque ciphertext
+- **Three Privacy Levels**: Each session picks one when it starts.
+  - **Normal**: the server can read questions, so the AI can cluster them and suggest answers.
+  - **Encrypted**: end-to-end encrypted. Questions and clustering stay in the browser and the server only relays ciphertext.
+  - **Hashed identity**: encrypted, plus each participant is a per-session hash, so people cannot be linked across sessions. The host shares a 6 character decryption code.
 - **Session Export**: Results download as PDF summaries
 
 ## Technology Foundation
@@ -47,4 +50,4 @@ A multi-stage `Dockerfile` builds the Vite frontend and serves it from the Flask
 Host port `6967` maps to container port `2167` because the CORS and Socket.IO allowlist in `src/backend/app.py` only permits `http://localhost:6967`. Keep the backend at one worker, since `SessionManager` holds session state in memory.
 
 ## Community
-The project welcomes contributions and maintains a contribution guide. It operates under GPLv3 licensing with comprehensive legal documentation available under `documents/legal/` and `documents/licenses/`.
+The project welcomes contributions and maintains a contribution guide. It is licensed under the GNU Affero General Public License v3 (see `LICENSE`). Other legal notices are under `documents/legal/` and `documents/licenses/`.
