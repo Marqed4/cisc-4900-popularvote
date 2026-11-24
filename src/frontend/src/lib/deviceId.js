@@ -13,7 +13,7 @@ export function getDeviceId() {
   }
 }
 
-// per-session pseudonym for rooms created with "Hashed identity".
+// per-session pseudonym for rooms created with "Anonymous" (encrypted + hashed identity).
 // HMAC-SHA-256 with the device id as the key and the session code as the message, so the same
 // device gets the same value inside one session (the unique-device count still works) and an
 // unrelated value in every other session. one way: the device id can't be worked out from it.

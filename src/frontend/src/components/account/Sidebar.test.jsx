@@ -55,31 +55,31 @@ describe("Sidebar tier badges (signed out)", () => {
     ];
   });
 
-  it("shows one badge per tier, and old null rows as Normal", async () => {
+  it("shows one badge per tier, and old null rows as Classic", async () => {
     renderSidebar();
 
     await screen.findByText("Room AAA111");
-    expect(screen.getAllByText("Normal")).toHaveLength(2);
-    expect(screen.getAllByText("Encrypted")).toHaveLength(1);
-    expect(screen.getAllByText("Hashed identity")).toHaveLength(1);
+    expect(screen.getAllByText("Classic")).toHaveLength(2);
+    expect(screen.getAllByText("Private")).toHaveLength(1);
+    expect(screen.getAllByText("Anonymous")).toHaveLength(1);
   });
 
   it("puts the right style class on each tier", async () => {
     renderSidebar();
 
     await screen.findByText("Room AAA111");
-    expect(screen.getByText("Encrypted").className).toContain("sb-tier-e2e");
-    expect(screen.getByText("Hashed identity").className).toContain("sb-tier-hashed");
-    expect(screen.getAllByText("Normal")[0].className).toContain("sb-tier-normal");
+    expect(screen.getByText("Private").className).toContain("sb-tier-e2e");
+    expect(screen.getByText("Anonymous").className).toContain("sb-tier-hashed");
+    expect(screen.getAllByText("Classic")[0].className).toContain("sb-tier-normal");
   });
 
   it("explains each tier in a title, so color is never the only cue", async () => {
     renderSidebar();
 
     await screen.findByText("Room AAA111");
-    expect(screen.getByText("Encrypted").title).toMatch(/cannot read questions/i);
-    expect(screen.getByText("Hashed identity").title).toMatch(/linked across sessions/i);
-    expect(screen.getAllByText("Normal")[0].title).toMatch(/readable on the server/i);
+    expect(screen.getByText("Private").title).toMatch(/cannot read questions/i);
+    expect(screen.getByText("Anonymous").title).toMatch(/linked across sessions/i);
+    expect(screen.getAllByText("Classic")[0].title).toMatch(/readable on the server/i);
   });
 
   it("asks Supabase for both tier columns", async () => {
@@ -91,13 +91,13 @@ describe("Sidebar tier badges (signed out)", () => {
     expect(select).toContain("hashed_identity");
   });
 
-  it("treats encrypted=false with hashed_identity=true as Normal (hashed implies encrypted)", async () => {
+  it("treats encrypted=false with hashed_identity=true as Classic (hashed implies encrypted)", async () => {
     tables.sessions = [row("AAA111", { encrypted: false, hashed_identity: true })];
     renderSidebar();
 
     await screen.findByText("Room AAA111");
-    expect(screen.getByText("Normal")).toBeTruthy();
-    expect(screen.queryByText("Hashed identity")).toBeNull();
+    expect(screen.getByText("Classic")).toBeTruthy();
+    expect(screen.queryByText("Anonymous")).toBeNull();
   });
 });
 
@@ -128,9 +128,9 @@ describe("Sidebar tier badges (signed in)", () => {
     renderSidebar({ user });
 
     await screen.findByText("Room AAA111");
-    expect(screen.getByText("Encrypted")).toBeTruthy();
-    expect(screen.getByText("Hashed identity")).toBeTruthy();
-    expect(screen.queryByText("Normal")).toBeNull();
+    expect(screen.getByText("Private")).toBeTruthy();
+    expect(screen.getByText("Anonymous")).toBeTruthy();
+    expect(screen.queryByText("Classic")).toBeNull();
   });
 });
 
