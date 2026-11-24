@@ -195,8 +195,8 @@ const TIERS = [
     blurb: 'Best features. The server can read questions, so the AI can search, cluster and suggest answers straight from the database.',
   },
   {
-    id: 'e2e', label: 'End-to-end encrypted', flags: { encrypted: true, hashedIdentity: false },
-    blurb: 'The server only stores ciphertext. Clustering runs in your browser, with no AI help. The key stays in this browser.',
+    id: 'e2e', label: 'Encrypted', flags: { encrypted: true, hashedIdentity: false },
+    blurb: 'End-to-end encrypted. The server only stores ciphertext. Clustering runs in your browser, with no AI help. The key stays in this browser.',
   },
   {
     id: 'hashed', label: 'Hashed identity', flags: { encrypted: true, hashedIdentity: true },
