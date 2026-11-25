@@ -30,7 +30,7 @@ ALLOWED_ORIGINS = [
 ]
 
 app = Flask(__name__, static_folder=str(BASE_DIR / '..' / 'frontend' / 'dist'))
-CORS(app, origins=ALLOWED_ORIGINS, methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+CORS(app, origins=ALLOWED_ORIGINS, methods=['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'])
 limiter.init_app(app)
 
 socketio = SocketIO(app, cors_allowed_origins=ALLOWED_ORIGINS)

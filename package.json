@@ -7,6 +7,9 @@
     "build": "npm run build --prefix src/frontend",
     "lint": "npm run lint --prefix src/frontend",
     "preview": "npm run preview --prefix src/frontend",
-    "test:frontend": "npm test --prefix src/frontend"
+    "test:frontend": "npm test --prefix src/frontend",
+    "demo:install": "npm install --prefix scripts/demo",
+    "demo": "node scripts/demo/run-demo.mjs",
+    "screenshots": "node scripts/demo/take-screenshots.mjs"
   }
 }

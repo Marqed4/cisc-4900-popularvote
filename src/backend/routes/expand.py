@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app
+from flask import Blueprint, jsonify, current_app
 from src.backend.managers import clustering_controller as clustering_engine
 from src.backend.managers.websocket_manager import to_session
 

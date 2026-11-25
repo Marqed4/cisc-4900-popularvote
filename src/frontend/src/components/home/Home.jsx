@@ -191,15 +191,15 @@ function JoinFlow({ onJoin }) {
 //              passcode shown once, and participants reach the server only as per-session hashes.
 const TIERS = [
   {
-    id: 'normal', label: 'Normal', flags: { encrypted: false, hashedIdentity: false },
+    id: 'normal', label: 'Classic', flags: { encrypted: false, hashedIdentity: false },
     blurb: 'Best features. The server can read questions, so the AI can search, cluster and suggest answers straight from the database.',
   },
   {
-    id: 'e2e', label: 'End-to-end encrypted', flags: { encrypted: true, hashedIdentity: false },
-    blurb: 'The server only stores ciphertext. Clustering runs in your browser, with no AI help. The key stays in this browser.',
+    id: 'e2e', label: 'Private', flags: { encrypted: true, hashedIdentity: false },
+    blurb: 'End-to-end encrypted. The server only stores ciphertext. Clustering runs in your browser, with no AI help. The key stays in this browser.',
   },
   {
-    id: 'hashed', label: 'Hashed identity', flags: { encrypted: true, hashedIdentity: true },
+    id: 'hashed', label: 'Anonymous', flags: { encrypted: true, hashedIdentity: true },
     blurb: 'Encrypted, and participants cannot be linked across sessions. You get a 6 character decryption code, separate from the join code. Everyone types it to read or send questions, and it is never stored. Lose it and the questions are gone.',
   },
 ];

@@ -21,10 +21,10 @@ function PhaseBadge({ phase }) {
 
 function TierBadge({ encrypted, hashed_identity }) {
   const [cls, label, hint] = encrypted && hashed_identity
-    ? ["sb-tier-hashed", "Hashed identity", "Server cannot read questions, and participants cannot be linked across sessions"]
+    ? ["sb-tier-hashed", "Anonymous", "Server cannot read questions, and participants cannot be linked across sessions"]
     : encrypted
-    ? ["sb-tier-e2e",    "Encrypted",       "Server cannot read questions"]
-    : ["sb-tier-normal", "Normal",          "Questions are stored readable on the server"];
+    ? ["sb-tier-e2e",    "Private",   "Server cannot read questions"]
+    : ["sb-tier-normal", "Classic",   "Questions are stored readable on the server"];
   return <span className={`sb-tier ${cls}`} title={hint}>{label}</span>;
 }
 
