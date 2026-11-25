@@ -3,15 +3,15 @@
 This document provides a complete index of all legal, licensing, and compliance
 materials for the PopularVote project.
 
-PopularVote is licensed under the GNU General Public License (GPLv3).  
+PopularVote is licensed under the GNU Affero General Public License v3 (AGPLv3).  
 Additional notices apply for third-party services and libraries used by the project.
 
 ---
 
 ## 1. Project License
 
-- **GPLv3 License**  
-  Full text: documents/licenses/gplv3.txt
+- **AGPLv3 License**  
+  Full text: LICENSE (in the repository root)
 
 ---
 

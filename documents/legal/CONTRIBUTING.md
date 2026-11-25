@@ -3,7 +3,7 @@
 Thank you for considering contributing to PopularVote!
 
 ## Contribution License
-By submitting a pull request, you agree that your contributions are licensed under GPLv3.
+By submitting a pull request, you agree that your contributions are licensed under AGPLv3.
 
 ## How to Contribute
 - Fork the repository

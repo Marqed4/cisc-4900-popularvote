@@ -92,8 +92,9 @@ revoke all on sessions, submissions, clusters, user_sessions, user_submissions f
 
 grant all on sessions, submissions, clusters, user_sessions, user_submissions to service_role;
 
--- sessions: anyone can read just these columns (never host_notes, curators or the encrypted flag)
-grant select (code, phase, tags, title, created_at) on sessions to anon, authenticated;
+-- sessions: anyone can read just these columns (never host_notes, curators or key_check).
+-- encrypted and hashed_identity are readable because the sidebar history shows a privacy tier badge.
+grant select (code, phase, tags, title, created_at, encrypted, hashed_identity) on sessions to anon, authenticated;
 drop policy if exists "sessions public read" on sessions;
 create policy "sessions public read" on sessions
   for select to anon, authenticated using (true);
