@@ -1,16 +1,10 @@
--- ============================================================
 -- CLEANUP
--- ============================================================
-
 DELETE FROM clusters WHERE session_code = 'SE4010';
 DELETE FROM submissions WHERE session_code = 'SE4010';
 DELETE FROM user_sessions WHERE session_code = 'SE4010';
 DELETE FROM sessions WHERE code = 'SE4010';
 
--- ============================================================
 -- INSERT SESSION
--- ============================================================
-
 INSERT INTO sessions (
   code, phase, tags, title, description, host_notes,
   expansion_round, curators, submissions_at_last_cluster
@@ -27,10 +21,7 @@ VALUES (
   18
 );
 
--- ============================================================
 -- LINK SESSION TO HOST
--- ============================================================
-
 INSERT INTO user_sessions (user_id, session_code, role)
 VALUES (
   'f89c171e-b81a-487c-8e89-763033f5988e',
@@ -38,10 +29,7 @@ VALUES (
   'host'
 );
 
--- ============================================================
 -- INSERT SUBMISSIONS (18 total)
--- ============================================================
-
 INSERT INTO submissions (id, session_code, content, participant_answer, is_curator)
 VALUES
   (gen_random_uuid(),'SE4010','What are the main phases of the Software Development Life Cycle?',NULL,false),
@@ -63,10 +51,7 @@ VALUES
   (gen_random_uuid(),'SE4010','How is software maintenance categorized (corrective, adaptive, perfective)?',NULL,false),
   (gen_random_uuid(),'SE4010','What metrics are used to evaluate software quality?',NULL,false);
 
--- ============================================================
 -- INSERT CLUSTERS (5 clusters)
--- ============================================================
-
 INSERT INTO clusters (
   id, session_code, representative_query, submission_count,
   questions, answer, upvote_count,

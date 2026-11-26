@@ -1,16 +1,10 @@
--- ============================================================
 -- CLEANUP
--- ============================================================
-
 DELETE FROM clusters WHERE session_code = 'CS2SK1';
 DELETE FROM submissions WHERE session_code = 'CS2SK1';
 DELETE FROM user_sessions WHERE session_code = 'CS2SK1';
 DELETE FROM sessions WHERE code = 'CS2SK1';
 
--- ============================================================
 -- INSERT SESSION
--- ============================================================
-
 INSERT INTO sessions (
   code, phase, tags, title, description, host_notes,
   expansion_round, curators, submissions_at_last_cluster
@@ -27,10 +21,7 @@ VALUES (
   18
 );
 
--- ============================================================
 -- LINK SESSION TO HOST
--- ============================================================
-
 INSERT INTO user_sessions (user_id, session_code, role)
 VALUES (
   'f89c171e-b81a-487c-8e89-763033f5988e',
@@ -38,10 +29,7 @@ VALUES (
   'host'
 );
 
--- ============================================================
 -- INSERT SUBMISSIONS (18 total)
--- ============================================================
-
 INSERT INTO submissions (id, session_code, content, participant_answer, is_curator)
 VALUES
   (gen_random_uuid(),'CS2SK1','What caused the $2 billion drop in the CS2 skin market cap?',NULL,false),
@@ -63,10 +51,7 @@ VALUES
   (gen_random_uuid(),'CS2SK1','Can the CS2 skin economy realistically recover to previous highs?',NULL,false),
   (gen_random_uuid(),'CS2SK1','What legal or regulatory risks exist for skin trading platforms?',NULL,false);
 
--- ============================================================
 -- INSERT CLUSTERS (5 clusters)
--- ============================================================
-
 INSERT INTO clusters (
   id, session_code, representative_query, submission_count,
   questions, answer, upvote_count,

@@ -1,15 +1,9 @@
--- ============================================================
 -- CLEANUP
--- ============================================================
-
 DELETE FROM clusters WHERE session_code = 'W6R2F9';
 DELETE FROM submissions WHERE session_code = 'W6R2F9';
 DELETE FROM sessions WHERE code = 'W6R2F9';
 
--- ============================================================
 -- INSERT SESSION
--- ============================================================
-
 INSERT INTO sessions (
   code, phase, tags, title, description, host_notes,
   expansion_round, curators, submissions_at_last_cluster
@@ -26,10 +20,7 @@ VALUES (
   18
 );
 
--- ============================================================
 -- INSERT SESSION
--- ============================================================
-
 INSERT INTO sessions (
   code, phase, tags, title, description, host_notes,
   expansion_round, curators, submissions_at_last_cluster
@@ -47,10 +38,7 @@ VALUES (
 );
 
 
--- ============================================================
 -- INSERT SUBMISSIONS (18 total)
--- ============================================================
-
 INSERT INTO submissions (id, session_code, content, participant_answer, is_curator)
 VALUES
   (gen_random_uuid(),'W6R2F9','How dangerous is it to study Destruction magic without a mentor?',NULL,false),
@@ -72,10 +60,7 @@ VALUES
   (gen_random_uuid(),'W6R2F9','Are there penalties for summoning undead on campus grounds?',NULL,false),
   (gen_random_uuid(),'W6R2F9','What protections exist to prevent magical accidents during lectures?',NULL,false);
 
--- ============================================================
 -- INSERT CLUSTERS (5 clusters)
--- ============================================================
-
 INSERT INTO clusters (
   id, session_code, representative_query, submission_count,
   questions, answer, upvote_count,
