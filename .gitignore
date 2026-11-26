@@ -11,6 +11,9 @@ dist/
 .vite/
 CHANGELOG.md
 CONTEXT.md
+DEBLOAT.md
 
 src/frontend/src/assets/example_gifs/ignore/
 scripts/*
+# Mermaid sources for documents/design_documents/diagrams/*.png. Kept locally for re-rendering only.
+documents/diagram_sources/
