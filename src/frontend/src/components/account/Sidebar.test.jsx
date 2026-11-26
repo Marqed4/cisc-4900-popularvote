@@ -44,64 +44,64 @@ beforeEach(() => {
 });
 afterEach(cleanup);
 
-describe("Sidebar tier badges (signed out)", () => {
+describe("Sidebar privacy badges (signed out)", () => {
   beforeEach(() => {
     localStorage.setItem("pv-my-sessions", JSON.stringify(["AAA111", "BBB222", "CCC333", "DDD444"]));
     tables.sessions = [
-      row("AAA111", { encrypted: false, hashed_identity: false }),
-      row("BBB222", { encrypted: true, hashed_identity: false }),
-      row("CCC333", { encrypted: true, hashed_identity: true }),
-      row("DDD444", { encrypted: null, hashed_identity: null }), // an old row from before the columns
+      row("AAA111", { privacy_mode: "standard" }),
+      row("BBB222", { privacy_mode: "encrypted" }),
+      row("CCC333", { privacy_mode: "passcode" }),
+      row("DDD444", { privacy_mode: null }), // a row with no mode recorded
     ];
   });
 
-  it("shows one badge per tier, and old null rows as Classic", async () => {
+  it("shows one badge per mode, and rows with no mode as Standard", async () => {
     renderSidebar();
 
     await screen.findByText("Room AAA111");
-    expect(screen.getAllByText("Classic")).toHaveLength(2);
-    expect(screen.getAllByText("Private")).toHaveLength(1);
-    expect(screen.getAllByText("Anonymous")).toHaveLength(1);
+    expect(screen.getAllByText("Standard")).toHaveLength(2);
+    expect(screen.getAllByText("Encrypted")).toHaveLength(1);
+    expect(screen.getAllByText("Passcode")).toHaveLength(1);
   });
 
-  it("puts the right style class on each tier", async () => {
+  it("puts the right style class on each mode", async () => {
     renderSidebar();
 
     await screen.findByText("Room AAA111");
-    expect(screen.getByText("Private").className).toContain("sb-tier-e2e");
-    expect(screen.getByText("Anonymous").className).toContain("sb-tier-hashed");
-    expect(screen.getAllByText("Classic")[0].className).toContain("sb-tier-normal");
+    expect(screen.getByText("Encrypted").className).toContain("sb-tier-encrypted");
+    expect(screen.getByText("Passcode").className).toContain("sb-tier-passcode");
+    expect(screen.getAllByText("Standard")[0].className).toContain("sb-tier-standard");
   });
 
-  it("explains each tier in a title, so color is never the only cue", async () => {
+  it("explains each mode in a title, so color is never the only cue", async () => {
     renderSidebar();
 
     await screen.findByText("Room AAA111");
-    expect(screen.getByText("Private").title).toMatch(/cannot read questions/i);
-    expect(screen.getByText("Anonymous").title).toMatch(/linked across sessions/i);
-    expect(screen.getAllByText("Classic")[0].title).toMatch(/readable on the server/i);
+    expect(screen.getByText("Encrypted").title).toMatch(/cannot read questions/i);
+    expect(screen.getByText("Passcode").title).toMatch(/needs the passcode|everyone needs the passcode/i);
+    expect(screen.getAllByText("Standard")[0].title).toMatch(/server can read questions/i);
   });
 
-  it("asks Supabase for both tier columns", async () => {
+  it("asks Supabase for the privacy_mode column, not the old flags", async () => {
     renderSidebar();
 
     await screen.findByText("Room AAA111");
     const select = calls.find(c => c.table === "sessions").select;
-    expect(select).toContain("encrypted");
-    expect(select).toContain("hashed_identity");
+    expect(select).toContain("privacy_mode");
+    expect(select).not.toContain("hashed_identity");
   });
 
-  it("treats encrypted=false with hashed_identity=true as Classic (hashed implies encrypted)", async () => {
-    tables.sessions = [row("AAA111", { encrypted: false, hashed_identity: true })];
+  it("reads an unknown mode as Standard instead of guessing a stronger one", async () => {
+    tables.sessions = [row("AAA111", { privacy_mode: "bogus" })];
     renderSidebar();
 
     await screen.findByText("Room AAA111");
-    expect(screen.getByText("Classic")).toBeTruthy();
-    expect(screen.queryByText("Anonymous")).toBeNull();
+    expect(screen.getByText("Standard")).toBeTruthy();
+    expect(screen.queryByText("Passcode")).toBeNull();
   });
 });
 
-describe("Sidebar tier badges (signed in)", () => {
+describe("Sidebar privacy badges (signed in)", () => {
   const user = { id: "user-1", email: "a@b.co" };
 
   beforeEach(() => {
@@ -110,34 +110,34 @@ describe("Sidebar tier badges (signed in)", () => {
       { session_code: "CCC333", role: "participant", saved_at: "2026-01-01T00:00:00Z" },
     ];
     tables.sessions = [
-      row("AAA111", { encrypted: true, hashed_identity: false }),
-      row("CCC333", { encrypted: true, hashed_identity: true }),
+      row("AAA111", { privacy_mode: "encrypted" }),
+      row("CCC333", { privacy_mode: "passcode" }),
     ];
   });
 
-  it("asks for both tier columns on the signed-in path too", async () => {
+  it("asks for privacy_mode on the signed-in path too", async () => {
     renderSidebar({ user });
 
     await screen.findByText("Room AAA111");
     const select = calls.find(c => c.table === "sessions").select;
-    expect(select).toContain("encrypted");
-    expect(select).toContain("hashed_identity");
+    expect(select).toContain("privacy_mode");
+    expect(select).not.toContain("hashed_identity");
   });
 
   it("shows the badges for saved sessions", async () => {
     renderSidebar({ user });
 
     await screen.findByText("Room AAA111");
-    expect(screen.getByText("Private")).toBeTruthy();
-    expect(screen.getByText("Anonymous")).toBeTruthy();
-    expect(screen.queryByText("Classic")).toBeNull();
+    expect(screen.getByText("Encrypted")).toBeTruthy();
+    expect(screen.getByText("Passcode")).toBeTruthy();
+    expect(screen.queryByText("Standard")).toBeNull();
   });
 });
 
 describe("Sidebar behavior around the badge", () => {
   beforeEach(() => {
     localStorage.setItem("pv-my-sessions", JSON.stringify(["AAA111"]));
-    tables.sessions = [row("AAA111", { encrypted: true, hashed_identity: true })];
+    tables.sessions = [row("AAA111", { privacy_mode: "passcode" })];
   });
 
   it("opens the session when the row is clicked", async () => {

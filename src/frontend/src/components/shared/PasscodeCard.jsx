@@ -1,7 +1,7 @@
 import { useState } from "react";
 import "./PasscodeCard.css";
 
-// The decryption code for the hashed identity tier. A card in the page flow on purpose, not a
+// The passcode for passcode mode. A card in the page flow on purpose, not a
 // modal or an overlay, so nothing sits on top of the room. It has two jobs:
 //   - locked: this browser doesn't have the code yet (host reopening the room, or a participant
 //     joining). a 6 character box unlocks the questions. the code is never stored, so this is
@@ -32,8 +32,8 @@ export default function PasscodeCard({ role = "host", passcode, open, onToggle, 
         <p className="pv-passcode-eyebrow">Locked session</p>
         <p className="pv-passcode-note">
           {role === "host"
-            ? "Enter the 6 character decryption code you got when you started this session."
-            : "Enter the 6 character decryption code from the host. It is separate from the join code, and it is what unlocks the questions."}
+            ? "Enter the 6 character passcode you got when you started this session."
+            : "Enter the 6 character passcode from the host. It is separate from the join code, and it is what unlocks the questions."}
         </p>
         <div className="pv-passcode-actions">
           <input
@@ -46,7 +46,7 @@ export default function PasscodeCard({ role = "host", passcode, open, onToggle, 
             autoCapitalize="characters"
             autoComplete="off"
             spellCheck={false}
-            aria-label="Decryption code"
+            aria-label="Passcode"
             aria-invalid={!!error}
           />
           <button className="pv-passcode-btn pv-passcode-btn--primary" type="submit" disabled={busy || !input.trim()}>
@@ -63,7 +63,7 @@ export default function PasscodeCard({ role = "host", passcode, open, onToggle, 
   if (!open) {
     return (
       <div className="pv-passcode pv-passcode--bar">
-        <span className="pv-passcode-eyebrow">Decryption code hidden</span>
+        <span className="pv-passcode-eyebrow">Passcode hidden</span>
         <button className="pv-passcode-btn" onClick={onToggle}>Show code</button>
       </div>
     );
@@ -71,8 +71,8 @@ export default function PasscodeCard({ role = "host", passcode, open, onToggle, 
 
   return (
     <section className="pv-passcode" aria-live="polite">
-      <p className="pv-passcode-eyebrow">Decryption code</p>
-      <div className="pv-passcode-code" aria-label={`Decryption code: ${passcode.split("").join(" ")}`}>
+      <p className="pv-passcode-eyebrow">Passcode</p>
+      <div className="pv-passcode-code" aria-label={`Passcode: ${passcode.split("").join(" ")}`}>
         {passcode.split("").map((ch, i) => <span key={i} className="pv-passcode-char">{ch}</span>)}
       </div>
       <p className="pv-passcode-note">

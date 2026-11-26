@@ -96,14 +96,14 @@ export async function loadRoomKey(code) {
   }
 }
 
-// ---- hashed identity tier: the room key comes from a 6 character passcode ----
+// ---- passcode mode: the room key comes from a 6 character passcode ----
 // no random room key, no localStorage. host is shown a passcode once at creation, and the key
 // is derived from it (PBKDF2-SHA-256, salted with the session code) every time the room is
 // opened. forget the passcode, lose the room. nobody can reset it, the server never had it.
 //
 // honest limit: 6 chars of a 32 letter alphabet is 30 bits. PBKDF2 makes each guess slow but
 // someone holding a copy of the database could still grind through every code offline.
-// that is the price of a code a human will actually type. E2E tier uses a random 256 bit key.
+// that is the price of a code a human will actually type. Encrypted mode uses a random 256 bit key.
 
 // Crockford base32: no I, L, O, U, so nobody has to ask "is that a zero".
 const PASSCODE_ALPHABET = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";

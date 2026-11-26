@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { modeInfo } from "../../lib/privacy.js";
 import { supabase } from "../../lib/supabase.js";
 import "./Sidebar.css";
 
@@ -19,13 +20,9 @@ function PhaseBadge({ phase }) {
   return <span className={`sb-phase ${cls}`}>{label}</span>;
 }
 
-function TierBadge({ encrypted, hashed_identity }) {
-  const [cls, label, hint] = encrypted && hashed_identity
-    ? ["sb-tier-hashed", "Anonymous", "Server cannot read questions, and participants cannot be linked across sessions"]
-    : encrypted
-    ? ["sb-tier-e2e",    "Private",   "Server cannot read questions"]
-    : ["sb-tier-normal", "Classic",   "Questions are stored readable on the server"];
-  return <span className={`sb-tier ${cls}`} title={hint}>{label}</span>;
+function PrivacyBadge({ mode }) {
+  const { id, label, hint } = modeInfo(mode);
+  return <span className={`sb-tier sb-tier-${id}`} title={hint}>{label}</span>;
 }
 
 function formatDate(iso) {
@@ -67,7 +64,7 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
         const { data: sessionData } = await supabase
           .from("sessions")
           // Display title not join code
-          .select("code, phase, tags, title, created_at, encrypted, hashed_identity")
+          .select("code, phase, tags, title, created_at, privacy_mode")
           .in("code", codes);
 
         const byCode = Object.fromEntries((sessionData ?? []).map(s => [s.code, s]));
@@ -86,7 +83,7 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
         const { data } = await supabase
           .from("sessions")
           // Display title not join code
-          .select("code, phase, tags, title, created_at, encrypted, hashed_identity")
+          .select("code, phase, tags, title, created_at, privacy_mode")
           .in("code", allCodes)
           .order("created_at", { ascending: false });
 
@@ -163,7 +160,7 @@ export default function Sidebar({ open, onClose, user, onSignIn, onSignOut, onNa
                     <span className="sb-dot">·</span>
                     <span className="sb-item-date">{formatDate(s.created_at)}</span>
                     <PhaseBadge phase={s.phase} />
-                    <TierBadge encrypted={s.encrypted} hashed_identity={s.hashed_identity} />
+                    <PrivacyBadge mode={s.privacy_mode} />
                   </div>
                 </div>
                 <button

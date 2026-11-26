@@ -3,6 +3,7 @@ import { Html5Qrcode } from "html5-qrcode";
 import ThemePicker from '../shared/ThemePicker';
 import "./Home.css";
 import { API_BASE } from "../../lib/api.js";
+import { PRIVACY_MODES, STANDARD } from "../../lib/privacy.js";
 
 function SettingsIcon() {
   return (
@@ -183,35 +184,13 @@ function JoinFlow({ onJoin }) {
   );
 }
 
-// the three privacy tiers. the server only knows two flags, so a tier is just a pair of them:
-//   normal  -> neither. server reads questions, so clustering and the AI can use them as plain
-//              key/value rows.
-//   e2e     -> encrypted. server holds ciphertext, the key lives in the host's browser.
-//   hashed  -> encrypted + hashedIdentity. same ciphertext, but the key comes from a 6 character
-//              passcode shown once, and participants reach the server only as per-session hashes.
-const TIERS = [
-  {
-    id: 'normal', label: 'Classic', flags: { encrypted: false, hashedIdentity: false },
-    blurb: 'Best features. The server can read questions, so the AI can search, cluster and suggest answers straight from the database.',
-  },
-  {
-    id: 'e2e', label: 'Private', flags: { encrypted: true, hashedIdentity: false },
-    blurb: 'End-to-end encrypted. The server only stores ciphertext. Clustering runs in your browser, with no AI help. The key stays in this browser.',
-  },
-  {
-    id: 'hashed', label: 'Anonymous', flags: { encrypted: true, hashedIdentity: true },
-    blurb: 'Encrypted, and participants cannot be linked across sessions. You get a 6 character decryption code, separate from the join code. Everyone types it to read or send questions, and it is never stored. Lose it and the questions are gone.',
-  },
-];
-
 function NewSessionModal({ onStart, onClose }) {
   const [title, setTitle]       = useState('');
   const [description, setDescription] = useState('');
-  const [tier, setTier] = useState('normal');
+  const [mode, setMode] = useState(STANDARD);
 
   function handleStart() {
-    const { encrypted, hashedIdentity } = TIERS.find(t => t.id === tier).flags;
-    onStart(title.trim(), description.trim(), encrypted, hashedIdentity);
+    onStart(title.trim(), description.trim(), mode);
   }
 
   return (
@@ -240,17 +219,17 @@ function NewSessionModal({ onStart, onClose }) {
         />
         <fieldset className="pv-tier-group">
           <legend className="pv-field-label">Privacy</legend>
-          {TIERS.map(t => (
-            <label key={t.id} className={`pv-tier ${tier === t.id ? 'pv-tier--on' : ''}`}>
+          {PRIVACY_MODES.map(t => (
+            <label key={t.id} className={`pv-tier ${mode === t.id ? 'pv-tier--on' : ''}`}>
               <input
                 type="radio"
                 name="pv-tier"
                 value={t.id}
-                checked={tier === t.id}
-                onChange={() => setTier(t.id)}
+                checked={mode === t.id}
+                onChange={() => setMode(t.id)}
               />
               <span className="pv-tier-text">
-                <span className="pv-tier-name">{t.label}{t.id === 'normal' && <span className="pv-field-optional"> (default)</span>}</span>
+                <span className="pv-tier-name">{t.label}{t.id === STANDARD && <span className="pv-field-optional"> (default)</span>}</span>
                 <span className="pv-tier-blurb">{t.blurb}</span>
               </span>
             </label>
@@ -325,9 +304,9 @@ export default function Home({ onNavigate, user, onOpenSidebar, onOpenAuth, onSi
       {showNewSession   && (
         <NewSessionModal
           onClose={() => setShowNewSession(false)}
-          onStart={(title, description, encrypted, hashedIdentity) => {
+          onStart={(title, description, privacyMode) => {
             setShowNewSession(false);
-            onNavigate?.("host", "NEW", { title, description, encrypted, hashedIdentity });
+            onNavigate?.("host", "NEW", { title, description, privacyMode });
           }}
         />
       )}

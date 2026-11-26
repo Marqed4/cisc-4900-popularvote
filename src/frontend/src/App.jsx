@@ -37,10 +37,25 @@ async function migrateLocalSessions(userId) {
       localStorage.removeItem(JOINED_KEY);
     }
 
-    // migrate any locally-stored "my questions" for each session
+    // migrate any locally-stored "my questions" for each session. only standard rooms: in an
+    // encrypted or passcode room the server never sees plaintext, and copying a question into
+    // user_submissions would put it there. if the mode cannot be checked, copy nothing.
     const allCodes = [...new Set([...created, ...joined])];
+    if (!allCodes.length) return;
+    const { data: modes, error: modeError } = await supabase
+      .from("sessions")
+      .select("code, privacy_mode")
+      .in("code", allCodes);
+    if (modeError) throw modeError;
+    const modeOf = Object.fromEntries((modes ?? []).map(r => [r.code, r.privacy_mode]));
     for (const code of allCodes) {
       const key = `pv-my-subs-${code}`;
+      if (modeOf[code] !== "standard") {
+        // not standard, or no longer exists. a leftover local copy in a private room has no
+        // business sitting in this browser either.
+        if (modeOf[code]) localStorage.removeItem(key);
+        continue;
+      }
       try {
         const subs = JSON.parse(localStorage.getItem(key) ?? "[]");
         if (!subs.length) continue;
@@ -270,8 +285,7 @@ export default function App() {
           code={view.code}
           initialTitle={view.title ?? ''}
           initialDescription={view.description ?? ''}
-          initialEncrypted={view.encrypted ?? false}
-          initialHashedIdentity={view.hashedIdentity ?? false}
+          initialPrivacyMode={view.privacyMode ?? "standard"}
           user={user}
           onSessionCreated={code => saveSession(code, "host")}
           onBack={() => setView(null)}

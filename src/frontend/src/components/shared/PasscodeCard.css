@@ -1,4 +1,4 @@
-/* inline passcode card for the hashed identity tier. sits at the top of .hd-main, in the flow. */
+/* inline passcode card for passcode mode. sits at the top of .hd-main, in the flow. */
 .pv-passcode {
   background: var(--surface);
   border: 1px solid var(--border);
