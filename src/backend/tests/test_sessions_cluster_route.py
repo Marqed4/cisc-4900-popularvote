@@ -226,59 +226,66 @@ class TestSetKeyCheckRoute:
 
 
 class TestCreateSessionRoute:
-    def _created(self, **flags):
+    def _created(self, mode='standard'):
         return {
             'code': 'ABC123', 'phase': 'OPEN', 'tags': [], 'title': '', 'description': '',
-            'encrypted': False, 'hashedIdentity': False, **flags,
+            'privacyMode': mode, 'encrypted': mode != 'standard',
         }
 
-    def test_forwards_both_tier_flags_to_the_manager(self, client, fake_session_manager):
-        fake_session_manager.create_session.return_value = self._created(encrypted=True, hashedIdentity=True)
+    def test_forwards_the_privacy_mode_to_the_manager(self, client, fake_session_manager):
+        fake_session_manager.create_session.return_value = self._created('passcode')
 
-        res = client.post('/api/sessions', json={'title': 'T', 'encrypted': True, 'hashedIdentity': True})
+        res = client.post('/api/sessions', json={'title': 'T', 'privacyMode': 'passcode'})
 
-        fake_session_manager.create_session.assert_called_once_with([], 'T', '', True, True)
+        fake_session_manager.create_session.assert_called_once_with([], 'T', '', 'passcode')
+        assert res.get_json()['privacyMode'] == 'passcode'
         assert res.get_json()['encrypted'] is True
-        assert res.get_json()['hashedIdentity'] is True
 
-    def test_flags_default_to_the_normal_tier(self, client, fake_session_manager):
+    def test_mode_defaults_to_standard(self, client, fake_session_manager):
         fake_session_manager.create_session.return_value = self._created()
 
         client.post('/api/sessions', json={})
 
-        fake_session_manager.create_session.assert_called_once_with([], '', '', False, False)
+        fake_session_manager.create_session.assert_called_once_with([], '', '', 'standard')
 
-    def test_encrypted_without_hashed_identity_is_the_middle_tier(self, client, fake_session_manager):
-        fake_session_manager.create_session.return_value = self._created(encrypted=True)
+    def test_encrypted_is_the_middle_mode(self, client, fake_session_manager):
+        fake_session_manager.create_session.return_value = self._created('encrypted')
 
-        res = client.post('/api/sessions', json={'encrypted': True})
+        res = client.post('/api/sessions', json={'privacyMode': 'encrypted'})
 
-        fake_session_manager.create_session.assert_called_once_with([], '', '', True, False)
-        assert res.get_json()['hashedIdentity'] is False
+        fake_session_manager.create_session.assert_called_once_with([], '', '', 'encrypted')
+        assert res.get_json()['privacyMode'] == 'encrypted'
+
+    def test_an_unknown_mode_is_a_400_and_creates_nothing(self, client, fake_session_manager):
+        res = client.post('/api/sessions', json={'privacyMode': 'secret'})
+
+        assert res.status_code == 400
+        assert 'privacyMode' in res.get_json()['error']
+        fake_session_manager.create_session.assert_not_called()
 
 
 class TestGetSessionRoute:
     def _full(self, **extra):
         return {'code': 'ABC123', 'phase': 'OPEN', 'tags': [], **extra}
 
-    def test_returns_the_tier_flags_and_key_check(self, client, fake_session_manager):
+    def test_returns_the_privacy_mode_and_key_check(self, client, fake_session_manager):
         fake_session_manager.get_session_async.return_value = self._full(
-            encrypted=True, hashedIdentity=True, keyCheck='blob',
+            privacyMode='passcode', encrypted=True, keyCheck='blob',
         )
 
         body = client.get('/api/sessions/ABC123').get_json()
 
+        assert body['privacyMode'] == 'passcode'
         assert body['encrypted'] is True
-        assert body['hashedIdentity'] is True
         assert body['keyCheck'] == 'blob'
 
-    def test_sessions_missing_the_flags_read_as_the_normal_tier(self, client, fake_session_manager):
+    def test_sessions_missing_the_mode_read_as_standard(self, client, fake_session_manager):
         fake_session_manager.get_session_async.return_value = self._full()
 
         body = client.get('/api/sessions/ABC123').get_json()
 
+        assert body['privacyMode'] == 'standard'
         assert body['encrypted'] is False
-        assert body['hashedIdentity'] is False
         assert body['keyCheck'] is None
 
     def test_unknown_session_is_404(self, client, fake_session_manager):

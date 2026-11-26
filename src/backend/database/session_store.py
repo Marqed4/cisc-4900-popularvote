@@ -24,33 +24,14 @@ def _fetch_all(build_query):
 
 # --- sessions table -------------------------------------------------------------------------
 
-def create_session(code, tags=None, title='', description='', encrypted=False, hashed_identity=False):
-    # the row starts as OPEN with no curators. title, description and encrypted go in as
-    # separate updates after, so an older schema missing those columns can still create rooms.
+def create_session(code, tags=None, title='', description='', privacy_mode='standard'):
+    # one insert, so a room is never half made. every field goes in together, and a failure
+    # raises instead of leaving a row that says "standard" while the host believes it is encrypted.
     tags = tags or []
     result = supabase.table('sessions').insert({
-        'code': code, 'phase': 'OPEN', 'tags': tags, 'expansion_round': 0, 'curators': []
+        'code': code, 'phase': 'OPEN', 'tags': tags, 'expansion_round': 0, 'curators': [],
+        'title': title, 'description': description, 'privacy_mode': privacy_mode,
     }).execute()
-
-    if title or description:
-        try:
-            supabase.table('sessions').update({'title': title, 'description': description}).eq('code', code).execute()
-        except Exception as e:
-            print(f'[createSession] context write skipped: {e}')
-
-    if encrypted:
-        # no try/except on purpose. if this write fails the database says "not encrypted"
-        # while the host thinks it is, and that's the kind of quiet lie that hurts later.
-        # let it raise so session_manager at least hears about it.
-        supabase.table('sessions').update({'encrypted': True}).eq('code', code).execute()
-
-    if hashed_identity:
-        # same reasoning as encrypted: no try/except. a room that is meant to hide identities
-        # but is stored as plain would quietly send raw device ids after a restart. only runs
-        # when the option is on, so a schema without the hashed_identity column still works
-        # for every other room.
-        supabase.table('sessions').update({'hashed_identity': True}).eq('code', code).execute()
-
     return result.data
 
 
@@ -223,7 +204,7 @@ def update_cluster_contextual_facts(cluster_id, contextual_facts):
 
 
 def add_participant_answer_to_cluster(cluster_id, answer):
-    # best path is the append_participant_answer function in the database (see migration.sql),
+    # best path is the append_participant_answer function in the database (see src/backend/database/migrations/2026-11-26_privacy_mode.sql),
     # which adds the answer in one step so overlapping answers can't overwrite each other.
     # if that function isn't installed yet, fall back to read, append, write back.
     try:
@@ -261,7 +242,7 @@ def update_curators(code, curators):
 
 def increment_expansion_round(code):
     # same idea as the participant answers: use the database function when it exists
-    # (see migration.sql), otherwise read the number and write it back plus one.
+    # (see src/backend/database/migrations/2026-11-26_privacy_mode.sql), otherwise read the number and write it back plus one.
     try:
         supabase.rpc('increment_expansion_round', {'p_code': code}).execute()
         return
@@ -274,7 +255,7 @@ def increment_expansion_round(code):
 
 
 # --- session_viewers table: unique devices per session ----------------------------------------
-# needs migration_session_viewers.sql. one row per (session_code, device_id), and the primary
+# needs src/backend/database/migrations/2026-11-26_privacy_mode.sql. one row per (session_code, device_id), and the primary
 # key does the deduplication, so refreshes, reconnects and two tabs racing can't double count.
 
 def record_viewer(session_code, device_id):

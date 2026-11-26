@@ -13,6 +13,7 @@
 import random
 import string
 
+from src.backend import privacy
 from src.backend.database import session_store as SessionStore
 
 PHASES = {
@@ -76,17 +77,18 @@ class SessionManager:
                     # if clusters exist, assume they covered every submission so far, otherwise
                     # an incremental run after a restart would re-cluster everything as "new"
                     'submissionsAtLastCluster': len(submissions) if clusters else 0,
-                    'encrypted': s.get('encrypted') or False,
-                    'hashedIdentity': s.get('hashed_identity') or False,
+                    'privacyMode': privacy.from_row(s),
+                    'encrypted': privacy.is_encrypted(privacy.from_row(s)),
                     'keyCheck': s.get('key_check'),
                 }
             print(f'[SessionManager] hydrated {len(sessions)} session(s) from Supabase')
         except Exception as err:
             print('[SessionManager] hydration failed:', err)
 
-    def create_session(self, tags=None, title='', description='', encrypted=False, hashed_identity=False):
+    def create_session(self, tags=None, title='', description='', privacy_mode=privacy.STANDARD):
         # step one of every session's life. called by POST /sessions.
         tags = tags or []
+        privacy_mode = privacy.normalize(privacy_mode)
         code = self.generate_unique_code()
         session = {
             'code': code,
@@ -103,16 +105,16 @@ class SessionManager:
             'curators': [],
             'contextualFacts': [],
             'submissionsAtLastCluster': 0,
-            'encrypted': bool(encrypted),
-            'hashedIdentity': bool(hashed_identity),
+            'privacyMode': privacy_mode,
+            'encrypted': privacy.is_encrypted(privacy_mode),
             'keyCheck': None,
         }
         self.sessions[code] = session
         try:
             # the session is already in memory by now, so if this write fails the room still
-            # works until a restart... then it's just gone. the encrypted flag write inside used
-            # to be best effort, it isn't anymore, so a failure lands here and gets printed.
-            SessionStore.create_session(code, tags, title, description, encrypted, hashed_identity)
+            # works until a restart... then it's just gone. the write is a single insert, so
+            # either the whole room (privacy mode included) is stored or none of it is.
+            SessionStore.create_session(code, tags, title, description, privacy_mode)
         except Exception as err:
             print('[SessionManager] failed to persist session:', err)
         return session
@@ -150,8 +152,8 @@ class SessionManager:
                 'expansionRound': s.get('expansion_round') or 0,
                 'curators': s.get('curators') or [],
                 'contextualFacts': [f for c in clusters for f in (c.get('contextual_facts') or [])],
-                'encrypted': s.get('encrypted') or False,
-                'hashedIdentity': s.get('hashed_identity') or False,
+                'privacyMode': privacy.from_row(s),
+                'encrypted': privacy.is_encrypted(privacy.from_row(s)),
                 'keyCheck': s.get('key_check'),
             }
             self.sessions[code] = session
@@ -161,14 +163,14 @@ class SessionManager:
             return None
 
     def set_key_check(self, code, key_check):
-        # hashed identity rooms only. the key check is an encrypted canary the host's browser
+        # passcode rooms only. the key check is an encrypted canary the host's browser
         # makes from the passcode-derived key, so a typed passcode can be tested even in a room
         # with no questions yet. useless without the passcode, and it can only be set once: the
         # first write wins, so nobody can swap it out from under the host later.
         session = self.get_session_async(code)
         if not session:
             raise ValueError('Session not found')
-        if not session.get('hashedIdentity'):
+        if session.get('privacyMode') != privacy.PASSCODE:
             raise ValueError('Session does not use a passcode')
         if session.get('keyCheck'):
             raise PermissionError('Key check is already set')

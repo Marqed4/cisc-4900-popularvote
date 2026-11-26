@@ -185,6 +185,7 @@ def register(socketio, session_manager):
             'clusters': session.get('clusters', []),
             'curators': session.get('curators', []),
             'contextualFacts': session.get('contextualFacts', []),
+            'privacyMode': session.get('privacyMode', 'standard'),
             'encrypted': session.get('encrypted', False),
         }, to=sid)
 

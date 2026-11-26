@@ -4,6 +4,7 @@ from flask import Blueprint, request, jsonify, current_app
 from pypdf import PdfReader
 import io
 
+from src.backend import privacy
 from src.backend.managers import clustering_controller as clustering_engine
 from src.backend.managers.websocket_manager import to_session
 from src.backend.database import session_store as SessionStore
@@ -12,6 +13,7 @@ from src.backend.routes.submissions import ENCRYPTED_CONTENT_LIMIT
 sessions_bp = Blueprint('sessions', __name__)
 
 MAX_PDF_SIZE = 10 * 1024 * 1024
+MAX_PDF_PAGES = 50
 
 
 @sessions_bp.route('/sessions', methods=['POST'])
@@ -21,14 +23,16 @@ def create_session():
         tags = body.get('tags', [])
         title = body.get('title', '')
         description = body.get('description', '')
-        encrypted = bool(body.get('encrypted', False))
-        hashed_identity = bool(body.get('hashedIdentity', False))
+        try:
+            privacy_mode = privacy.normalize(body.get('privacyMode'))
+        except ValueError as err:
+            return jsonify({'error': str(err)}), 400
         session_manager = current_app.session_manager
-        session = session_manager.create_session(tags, title, description, encrypted, hashed_identity)
+        session = session_manager.create_session(tags, title, description, privacy_mode)
         return jsonify({
             'code': session['code'], 'phase': session['phase'], 'tags': session['tags'],
             'title': session['title'], 'description': session['description'],
-            'encrypted': session['encrypted'], 'hashedIdentity': session['hashedIdentity'],
+            'privacyMode': session['privacyMode'], 'encrypted': session['encrypted'],
         })
     except Exception as err:
         print(err)
@@ -354,12 +358,27 @@ def update_notes(code):
         if not session:
             return jsonify({'error': 'Session not found'}), 404
 
+        # reject on the declared size before reading the body, so an oversized upload never
+        # gets loaded. a notes body is at most MAX_NOTES_CHARS characters of text.
+        limit_chars = clustering_engine.MAX_NOTES_CHARS
+        declared = request.content_length or 0
+        if request.mimetype == 'multipart/form-data':
+            if declared > MAX_PDF_SIZE + 64 * 1024:
+                return jsonify({'error': 'PDF exceeds 10MB limit'}), 413
+        elif declared > limit_chars * 4 + 1024:
+            return jsonify({'error': f'Notes are limited to {limit_chars:,} characters', 'limit': limit_chars}), 413
+
         pdf_file = request.files.get('pdf')
         if pdf_file:
             data = pdf_file.read()
             if len(data) > MAX_PDF_SIZE:
                 return jsonify({'error': 'PDF exceeds 10MB limit'}), 400
-            reader = PdfReader(io.BytesIO(data))
+            try:
+                reader = PdfReader(io.BytesIO(data))
+                if len(reader.pages) > MAX_PDF_PAGES:
+                    return jsonify({'error': f'PDF has {len(reader.pages)} pages. The limit is {MAX_PDF_PAGES}.'}), 400
+            except Exception:
+                return jsonify({'error': 'That file could not be read as a PDF'}), 400
             extracted_text = '\n'.join(page.extract_text() or '' for page in reader.pages).strip()
             if not extracted_text:
                 return jsonify({'error': 'Could not extract text from PDF'}), 400
@@ -367,6 +386,13 @@ def update_notes(code):
 
         body = request.get_json(silent=True) or {}
         host_notes = body.get('hostNotes')
+        if host_notes is not None and not isinstance(host_notes, str):
+            return jsonify({'error': 'hostNotes must be text'}), 400
+        if host_notes and len(host_notes) > limit_chars:
+            return jsonify({
+                'error': f'Notes are {len(host_notes):,} characters. The limit is {limit_chars:,}.',
+                'limit': limit_chars,
+            }), 400
         session['hostNotes'] = host_notes
         try:
             SessionStore.update_host_notes(code, host_notes)
@@ -429,8 +455,8 @@ def get_session(code):
             'expansionRound': session.get('expansionRound') or 0,
             'curators': session.get('curators') or [],
             'contextualFacts': session.get('contextualFacts') or [],
+            'privacyMode': session.get('privacyMode') or privacy.STANDARD,
             'encrypted': session.get('encrypted') or False,
-            'hashedIdentity': session.get('hashedIdentity') or False,
             'keyCheck': session.get('keyCheck'),
         })
     except Exception as err:
@@ -440,7 +466,7 @@ def get_session(code):
 
 @sessions_bp.route('/sessions/<code>/key-check', methods=['POST'])
 def set_key_check(code):
-    # the host's browser posts an encrypted canary right after creating a hashed identity room.
+    # the host's browser posts an encrypted canary right after creating a passcode room.
     # the server can't read it. everyone else uses it to tell a right passcode from a typo.
     try:
         body = request.get_json(silent=True) or {}

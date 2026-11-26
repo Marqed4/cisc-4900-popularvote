@@ -20,96 +20,47 @@ def _chain(return_data):
 
 
 class TestCreateSession:
-    def test_persists_code_phase_and_tags(self, monkeypatch):
+    def _store(self, monkeypatch, insert_result=None):
         table_mock = MagicMock()
-        table_mock.insert.return_value = _chain([{'code': 'ABC123'}])
+        table_mock.insert.return_value = _chain(insert_result if insert_result is not None else [{}])
         monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
+        return table_mock
 
-        result = session_store.create_session('ABC123', tags=['math'], title='', description='')
+    def test_persists_the_whole_room_in_one_insert(self, monkeypatch):
+        table_mock = self._store(monkeypatch, [{'code': 'ABC123'}])
+
+        result = session_store.create_session('ABC123', tags=['math'], title='Town Hall', description='Q&A', privacy_mode='passcode')
 
         table_mock.insert.assert_called_once_with({
             'code': 'ABC123', 'phase': 'OPEN', 'tags': ['math'], 'expansion_round': 0, 'curators': [],
+            'title': 'Town Hall', 'description': 'Q&A', 'privacy_mode': 'passcode',
         })
         assert result == [{'code': 'ABC123'}]
 
-    def test_writes_title_and_description_when_given(self, monkeypatch):
-        table_mock = MagicMock()
-        table_mock.insert.return_value = _chain([{}])
-        table_mock.update.return_value.eq.return_value = _chain(None)
-        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
+    def test_never_follows_up_with_separate_updates(self, monkeypatch):
+        """Regression: the privacy flags used to be written by extra update calls after the
+        insert, so a failure partway left a row that said "not encrypted" for a room the host
+        thought was. One insert is all or nothing."""
+        table_mock = self._store(monkeypatch)
 
-        session_store.create_session('ABC123', title='Town Hall', description='Q&A')
-
-        table_mock.update.assert_any_call({'title': 'Town Hall', 'description': 'Q&A'})
-
-    def test_encrypted_flag_write_failure_is_not_swallowed(self, monkeypatch):
-        """
-        Regression test: create_session() used to catch and print any error from
-        writing the `encrypted` column, so a session could end up stored as
-        unencrypted while every client believed it was E2E-encrypted, with nothing
-        surfacing the failure. The write must now propagate like any other.
-        """
-        table_mock = MagicMock()
-        table_mock.insert.return_value = _chain([{}])
-
-        def update(fields):
-            if fields == {'encrypted': True}:
-                raise Exception('column "encrypted" does not exist')
-            return MagicMock(eq=MagicMock(return_value=_chain(None)))
-
-        table_mock.update.side_effect = update
-        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
-
-        with pytest.raises(Exception, match='encrypted'):
-            session_store.create_session('ABC123', encrypted=True)
-
-    def test_does_not_write_encrypted_column_when_not_encrypted(self, monkeypatch):
-        table_mock = MagicMock()
-        table_mock.insert.return_value = _chain([{}])
-        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
-
-        session_store.create_session('ABC123', encrypted=False)
+        session_store.create_session('ABC123', privacy_mode='encrypted')
 
         table_mock.update.assert_not_called()
 
+    def test_defaults_to_the_standard_mode(self, monkeypatch):
+        table_mock = self._store(monkeypatch)
 
-    def test_writes_hashed_identity_column_when_requested(self, monkeypatch):
+        session_store.create_session('ABC123')
+
+        assert table_mock.insert.call_args.args[0]['privacy_mode'] == 'standard'
+
+    def test_a_failed_insert_is_not_swallowed(self, monkeypatch):
         table_mock = MagicMock()
-        table_mock.insert.return_value = _chain([{}])
-        table_mock.update.return_value.eq.return_value = _chain(None)
+        table_mock.insert.return_value.execute.side_effect = Exception('column "privacy_mode" does not exist')
         monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
 
-        session_store.create_session('ABC123', encrypted=True, hashed_identity=True)
-
-        table_mock.update.assert_any_call({'encrypted': True})
-        table_mock.update.assert_any_call({'hashed_identity': True})
-
-    def test_does_not_touch_hashed_identity_column_by_default(self, monkeypatch):
-        # an older schema without the column must keep working for every other room
-        table_mock = MagicMock()
-        table_mock.insert.return_value = _chain([{}])
-        table_mock.update.return_value.eq.return_value = _chain(None)
-        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
-
-        session_store.create_session('ABC123', encrypted=True)
-
-        written = [c.args[0] for c in table_mock.update.call_args_list]
-        assert {'hashed_identity': True} not in written
-
-    def test_hashed_identity_write_failure_is_not_swallowed(self, monkeypatch):
-        table_mock = MagicMock()
-        table_mock.insert.return_value = _chain([{}])
-
-        def update(fields):
-            if 'hashed_identity' in fields:
-                raise Exception('column "hashed_identity" does not exist')
-            return MagicMock(eq=MagicMock(return_value=_chain(None)))
-
-        table_mock.update.side_effect = update
-        monkeypatch.setattr(session_store, 'supabase', MagicMock(table=MagicMock(return_value=table_mock)))
-
-        with pytest.raises(Exception, match='hashed_identity'):
-            session_store.create_session('ABC123', encrypted=True, hashed_identity=True)
+        with pytest.raises(Exception, match='privacy_mode'):
+            session_store.create_session('ABC123', privacy_mode='encrypted')
 
 
 class TestSetKeyCheck:

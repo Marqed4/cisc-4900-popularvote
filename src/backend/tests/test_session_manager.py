@@ -23,10 +23,11 @@ def manager(monkeypatch):
 
 class TestCreateSession:
     def test_builds_open_session_with_requested_flags(self, manager):
-        session = manager.create_session(tags=['science'], title='Lecture', description='Q&A', encrypted=True)
+        session = manager.create_session(tags=['science'], title='Lecture', description='Q&A', privacy_mode='encrypted')
 
         assert session['phase'] == 'OPEN'
         assert session['tags'] == ['science']
+        assert session['privacyMode'] == 'encrypted'
         assert session['encrypted'] is True
         assert session['code'] in manager.sessions
 
@@ -122,8 +123,8 @@ class TestRecordViewer:
 
 
 class TestSetKeyCheck:
-    def test_stores_the_check_once_for_a_hashed_identity_room(self, manager):
-        code = manager.create_session(encrypted=True, hashed_identity=True)['code']
+    def test_stores_the_check_once_for_a_passcode_room(self, manager):
+        code = manager.create_session(privacy_mode='passcode')['code']
 
         manager.set_key_check(code, '{"ciphertext":"x","nonce":"y"}')
 
@@ -131,7 +132,7 @@ class TestSetKeyCheck:
         session_manager_module.SessionStore.set_key_check.assert_called_once_with(code, '{"ciphertext":"x","nonce":"y"}')
 
     def test_second_write_is_refused(self, manager):
-        code = manager.create_session(encrypted=True, hashed_identity=True)['code']
+        code = manager.create_session(privacy_mode='passcode')['code']
         manager.set_key_check(code, 'first')
 
         with pytest.raises(PermissionError, match='already set'):
@@ -140,26 +141,32 @@ class TestSetKeyCheck:
         assert manager.sessions[code]['keyCheck'] == 'first'
 
     def test_rooms_without_a_passcode_refuse_it(self, manager):
-        code = manager.create_session(encrypted=True)['code']
+        code = manager.create_session(privacy_mode='encrypted')['code']
 
         with pytest.raises(ValueError, match='does not use a passcode'):
             manager.set_key_check(code, 'x')
 
 
-class TestHashedIdentityFlag:
-    def test_defaults_to_off_with_no_key_check(self, manager):
+class TestPrivacyMode:
+    def test_defaults_to_standard_with_no_key_check(self, manager):
         session = manager.create_session()
 
-        assert session['hashedIdentity'] is False
+        assert session['privacyMode'] == 'standard'
+        assert session['encrypted'] is False
         assert session['keyCheck'] is None
 
     def test_is_stored_on_the_session_and_forwarded_to_the_store(self, manager):
-        session = manager.create_session(encrypted=True, hashed_identity=True)
+        session = manager.create_session(privacy_mode='passcode')
 
-        assert session['hashedIdentity'] is True
+        assert session['privacyMode'] == 'passcode'
+        assert session['encrypted'] is True
         session_manager_module.SessionStore.create_session.assert_called_once_with(
-            session['code'], [], '', '', True, True,
+            session['code'], [], '', '', 'passcode',
         )
+
+    def test_rejects_an_unknown_mode(self, manager):
+        with pytest.raises(ValueError, match='privacyMode'):
+            manager.create_session(privacy_mode='secret')
 
     def test_unknown_session_cannot_take_a_key_check(self, manager):
         session_manager_module.SessionStore.get_session.side_effect = Exception('not found')
@@ -168,7 +175,7 @@ class TestHashedIdentityFlag:
             manager.set_key_check('NOPE00', 'x')
 
 
-class TestGetSessionAsyncTierFlags:
+class TestGetSessionAsyncPrivacyMode:
     def _row(self, **extra):
         return {'code': 'ABC123', 'phase': 'OPEN', **extra}
 
@@ -179,22 +186,22 @@ class TestGetSessionAsyncTierFlags:
         store.get_clusters.return_value = []
         return manager.get_session_async('ABC123')
 
-    def test_rebuilds_the_tier_flags_and_key_check_from_the_row(self, manager):
-        session = self._load(manager, self._row(encrypted=True, hashed_identity=True, key_check='blob'))
+    def test_rebuilds_the_mode_and_key_check_from_the_row(self, manager):
+        session = self._load(manager, self._row(privacy_mode='passcode', key_check='blob'))
 
+        assert session['privacyMode'] == 'passcode'
         assert session['encrypted'] is True
-        assert session['hashedIdentity'] is True
         assert session['keyCheck'] == 'blob'
 
-    def test_null_columns_on_old_rows_read_as_the_normal_tier(self, manager):
-        session = self._load(manager, self._row(encrypted=None, hashed_identity=None))
+    def test_rows_from_before_the_migration_are_read_from_the_old_flags(self, manager):
+        assert self._load(manager, self._row(encrypted=True, hashed_identity=True))['privacyMode'] == 'passcode'
+        manager.sessions.clear()  # get_session_async caches by code, so load the next row fresh
+        assert self._load(manager, self._row(encrypted=True, hashed_identity=False))['privacyMode'] == 'encrypted'
 
-        assert session['encrypted'] is False
-        assert session['hashedIdentity'] is False
-        assert session['keyCheck'] is None
-
-    def test_rows_missing_the_columns_entirely_read_as_the_normal_tier(self, manager):
-        session = self._load(manager, self._row())
-
-        assert session['encrypted'] is False
-        assert session['hashedIdentity'] is False
+    def test_null_or_missing_columns_read_as_standard(self, manager):
+        for row in (self._row(), self._row(privacy_mode=None, encrypted=None, hashed_identity=None)):
+            manager.sessions.clear()
+            session = self._load(manager, row)
+            assert session['privacyMode'] == 'standard'
+            assert session['encrypted'] is False
+            assert session['keyCheck'] is None
