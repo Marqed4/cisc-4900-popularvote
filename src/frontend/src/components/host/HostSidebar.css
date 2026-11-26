@@ -263,6 +263,14 @@
 }
 .hd-notes-textarea::placeholder { color: var(--text-3); }
 
+.hd-notes-count {
+  margin: -0.15rem 0 0.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--text-3);
+  text-align: right;
+}
+.hd-notes-count--over { color: var(--red); }
 .hd-notes-actions { display: flex; gap: 0.5rem; }
 .hd-notes-file-input { display: none; }
 

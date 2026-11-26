@@ -30,7 +30,7 @@ function saveBlob(blob, filename) {
 }
 
 export default function SummaryView({ clusters, answers, tags, submissionCount, title = "Session Summary" }) {
-  const countLine = `${plural(clusters.length, "cluster")} · ${plural(submissionCount, "total submission")}`;
+  const countLine = `${plural(clusters.length, "topic")} · ${plural(submissionCount, "question")}`;
 
   function downloadMarkdown() {
     const lines = [];
@@ -41,7 +41,7 @@ export default function SummaryView({ clusters, answers, tags, submissionCount, 
 
     clusters.forEach((cluster, i) => {
       lines.push(`## ${i + 1}. ${cluster.representative_query}`);
-      lines.push(`*${plural(cluster.submission_count, "submission")}*`);
+      lines.push(`*${plural(cluster.submission_count, "question")}*`);
       lines.push("");
 
       if (answers[cluster.id]) {
@@ -108,7 +108,7 @@ export default function SummaryView({ clusters, answers, tags, submissionCount, 
     clusters.forEach((cluster, i) => {
       checkPage(40);
       writeText(`${i + 1}. ${cluster.representative_query}`, { fontSize: 13, bold: true });
-      writeText(plural(cluster.submission_count, "submission"), { fontSize: 9, color: "#a8a29e" });
+      writeText(plural(cluster.submission_count, "question"), { fontSize: 9, color: "#a8a29e" });
       y += 6;
 
       if (answers[cluster.id]) {
@@ -188,7 +188,7 @@ export default function SummaryView({ clusters, answers, tags, submissionCount, 
                 <span className="sv-cluster-num">{i + 1}</span>
                 <div className="sv-cluster-info">
                   <div className="sv-cluster-query">{cluster.representative_query}</div>
-                  <div className="sv-cluster-meta">{plural(cluster.submission_count, "submission")}</div>
+                  <div className="sv-cluster-meta">{plural(cluster.submission_count, "question")}</div>
                 </div>
               </div>
               {answers[cluster.id] && (

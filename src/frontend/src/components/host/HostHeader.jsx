@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ThemePicker from '../shared/ThemePicker';
 import "./HostHeader.css";
+import { phaseLabel } from "../../lib/steps.js";
 
 function SettingsIcon() {
   return (
@@ -41,25 +42,25 @@ export default function HostHeader({ phase, participantCount, viewerCount, submi
           <button className="hd-hamburger" onClick={onOpenSidebar} title="Session history">
             <span /><span /><span />
           </button>
-          <button className="hd-back" onClick={onBack}>← back</button>
+          <button className="hd-back" onClick={onBack} title="Back to the home page. The session keeps running.">← Home</button>
           <div className="hd-header-meta">
-            <span className="hd-header-label">Host Dashboard</span>
-            <span className={`hd-phase hd-phase--${phase.toLowerCase()}`}>{phase}</span>
+            <span className="hd-header-label">Hosting</span>
+            <span className={`hd-phase hd-phase--${phase.toLowerCase()}`}>{phaseLabel(phase)}</span>
           </div>
         </div>
 
         <div className="hd-header-right">
-          <div className="hd-stat">
+          <div className="hd-stat" title="People connected to this session right now">
             <span key={participantCount} className="hd-stat-num">{participantCount}</span>
-            <span className="hd-stat-label">participants</span>
+            <span className="hd-stat-label">online</span>
           </div>
-          <div className="hd-stat" title="Unique devices that have joined this session">
+          <div className="hd-stat" title="Different devices that have joined at any point">
             <span key={viewerCount ?? 0} className="hd-stat-num">{viewerCount ?? 0}</span>
-            <span className="hd-stat-label">devices</span>
+            <span className="hd-stat-label">joined</span>
           </div>
-          <div className="hd-stat">
+          <div className="hd-stat" title="Questions sent so far">
             <span key={submissionCount} className="hd-stat-num">{submissionCount}</span>
-            <span className="hd-stat-label">submissions</span>
+            <span className="hd-stat-label">questions</span>
           </div>
           <button className="pv-nav-icon-btn" onClick={onToggleDark} title={darkMode ? "Light mode" : "Dark mode"}>
             {darkMode ? <SunIcon /> : <MoonIcon />}

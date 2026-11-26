@@ -46,17 +46,17 @@ export default function ParticipantInput({
       <div className="pd-card">
         <div className="pd-card-header">
           <span className="pd-card-title">
-            {isOpen ? "Submit a question" : "Submissions closed"}
+            {isOpen ? "Submit a question" : "Not accepting questions right now"}
           </span>
           <div className="pd-stats-row">
             <div className="pd-stat">
               <span key={submittedCount} className="pd-stat-num">{submittedCount}</span>
-              <span className="pd-stat-label">submitted</span>
+              <span className="pd-stat-label">sent</span>
             </div>
             <div className="pd-stat-divider" />
             <div className="pd-stat">
               <span key={inClusterCount} className="pd-stat-num">{inClusterCount}</span>
-              <span className="pd-stat-label">in cluster</span>
+              <span className="pd-stat-label">grouped</span>
             </div>
           </div>
         </div>
@@ -96,7 +96,7 @@ export default function ParticipantInput({
 
       {submissions.length > 0 && (
         <div className="pd-card pd-card--submissions">
-          <div className="pd-card-title pd-card-title--sm">Your submissions</div>
+          <div className="pd-card-title pd-card-title--sm">Your questions</div>
           <ul className="pd-submissions-list">
             {submissions.map(s => (
               <li key={s.id} className="pd-submission-item">
@@ -106,7 +106,7 @@ export default function ParticipantInput({
                     className="pd-delete-btn"
                     onClick={() => onDelete(s.id)}
                     title="Delete"
-                    aria-label="Delete this submission"
+                    aria-label="Delete this question"
                   >×</button>
                 )}
               </li>

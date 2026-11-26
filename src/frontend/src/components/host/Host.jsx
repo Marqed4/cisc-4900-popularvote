@@ -9,6 +9,9 @@ import {
 import { clusterQuestions } from "../../lib/clustering";
 import HostHeader from "./HostHeader";
 import PasscodeCard from "../shared/PasscodeCard";
+import StepBar from "../shared/StepBar";
+import { isEncrypted, isPasscode } from "../../lib/privacy.js";
+import { hostGuide } from "../../lib/steps.js";
 import HostList from "./HostList";
 import HostSidebar from "./HostSidebar.jsx";
 import ParticipantList from "./ParticipantList";
@@ -22,7 +25,7 @@ import { API_BASE, SOCKET_URL } from "../../lib/api.js";
 //      then EXPANDING (second round) loops back to RESULTS, and ENDED is where it stops
 //   4. on encrypted rooms this browser holds the room key, so all the reading and
 //      clustering happens here and the server only ever passes ciphertext along
-export default function HostDashboard({ code: initialCode, initialTitle = '', initialDescription = '', initialEncrypted = false, initialHashedIdentity = false, onBack, onSessionCreated, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg, look, onSelectLook }) {
+export default function HostDashboard({ code: initialCode, initialTitle = '', initialDescription = '', initialPrivacyMode = 'standard', onBack, onSessionCreated, onOpenSidebar, darkMode, onToggleDark, bgKey, onSelectBg, look, onSelectLook }) {
   // ====================== State ======================
 
   // Core session state. phase mirrors the server's phase, the server wins any argument.
@@ -30,11 +33,11 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   const [code, setCode] = useState(initialCode);
   const [title, setTitle] = useState(initialTitle);
   const [description, setDescription] = useState(initialDescription);
-  const [encrypted, setEncrypted] = useState(initialEncrypted);
-  // hashed identity tier: the room key comes from a typed decryption code, not browser storage.
+  const [encrypted, setEncrypted] = useState(isEncrypted(initialPrivacyMode));
+  // passcode mode: the room key comes from a typed code, not browser storage.
   // `unlocked` flips once a key has been derived. `passcode` is the code itself, kept in this tab's
   // memory only so the host can read it out to participants, it is never written anywhere.
-  const [hashedIdentity, setHashedIdentity] = useState(initialHashedIdentity);
+  const [passcodeRoom, setPasscodeRoom] = useState(isPasscode(initialPrivacyMode));
   const [unlocked, setUnlocked] = useState(false);
   const [passcode, setPasscode] = useState(null);
   const [showPasscode, setShowPasscode] = useState(false);
@@ -76,9 +79,9 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   // E2E state. the room key also lives in localStorage under the session code now, so a
   // refresh or a server restart doesn't leave old submissions unreadable (E2E-6).
   const codeRef = useRef(initialCode);
-  const encryptedRef = useRef(initialEncrypted);
+  const encryptedRef = useRef(isEncrypted(initialPrivacyMode));
   const hostKeysRef = useRef(null); // promise of { keyPair, publicKey, roomKey }
-  const hashedRef = useRef(initialHashedIdentity);
+  const passcodeRef = useRef(isPasscode(initialPrivacyMode));
   // the passcode-derived room key. memory only, never localStorage: closing the tab forgets it,
   // which is the whole point of asking for the code again.
   const passKeyRef = useRef(null);
@@ -90,14 +93,14 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
   // keeping: if this browser already saved one for the session we pick it back up, otherwise
   // we make a new one and hold onto it. losing it means losing every question, so... yeah.
   function ensureHostKeys() {
-    // hashed rooms with no passcode entered yet: refuse, and don't cache the refusal. callers
+    // passcode rooms with no passcode entered yet: refuse, and don't cache the refusal. callers
     // already treat a throw as "key unavailable", and the next call after unlock works.
-    if (hashedRef.current && !passKeyRef.current) return Promise.reject(new Error("locked"));
+    if (passcodeRef.current && !passKeyRef.current) return Promise.reject(new Error("locked"));
     if (!hostKeysRef.current) {
       hostKeysRef.current = (async () => {
         const keyPair = await generateKeyPair();
         let roomKey;
-        if (hashedRef.current) {
+        if (passcodeRef.current) {
           roomKey = passKeyRef.current;
         } else {
           roomKey = await loadRoomKey(codeRef.current);
@@ -173,7 +176,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     };
   }
 
-  // hashed identity tier, reopening a room: turn the typed code into a key and check it.
+  // passcode mode, reopening a room: turn the typed code into a key and check it.
   // the check is the server's stored key check (an encrypted canary). rooms made before that
   // existed fall back to decrypting something already stored, and a room with nothing stored has
   // nothing to test against, so it is let through.
@@ -235,19 +238,19 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       const res = await fetch(`${apiBase}/api/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tags, title: initialTitle, description: initialDescription, encrypted: initialEncrypted, hashedIdentity: initialHashedIdentity }),
+        body: JSON.stringify({ tags, title: initialTitle, description: initialDescription, privacyMode: initialPrivacyMode }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      encryptedRef.current = !!data.encrypted;
-      setEncrypted(!!data.encrypted);
+      encryptedRef.current = isEncrypted(data.privacyMode);
+      setEncrypted(isEncrypted(data.privacyMode));
       codeRef.current = data.code;
       setCode(data.code);
-      hashedRef.current = !!data.hashedIdentity;
-      setHashedIdentity(!!data.hashedIdentity);
-      if (data.hashedIdentity) {
-        // passcode tier: make the code, derive the key from it, show the code once. nothing
+      passcodeRef.current = isPasscode(data.privacyMode);
+      setPasscodeRoom(isPasscode(data.privacyMode));
+      if (isPasscode(data.privacyMode)) {
+        // passcode mode: make the code, derive the key from it, show the code once. nothing
         // goes to localStorage, the code is the only way back in.
         const fresh = generatePasscode();
         passKeyRef.current = await deriveRoomKeyFromPasscode(fresh, data.code);
@@ -261,7 +264,7 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
         setPasscode(fresh);
         setShowPasscode(true);
         setUnlocked(true);
-      } else if (data.encrypted) {
+      } else if (isEncrypted(data.privacyMode)) {
         const { roomKey } = await ensureHostKeys();
         await saveRoomKey(data.code, roomKey);
       }
@@ -297,10 +300,10 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
       setTitle(data.title ?? '');
       setDescription(data.description ?? '');
       setHostNotes(data.hostNotes ?? null);
-      encryptedRef.current = !!data.encrypted;
-      setEncrypted(!!data.encrypted);
-      hashedRef.current = !!data.hashedIdentity;
-      setHashedIdentity(!!data.hashedIdentity);
+      encryptedRef.current = isEncrypted(data.privacyMode);
+      setEncrypted(isEncrypted(data.privacyMode));
+      passcodeRef.current = isPasscode(data.privacyMode);
+      setPasscodeRoom(isPasscode(data.privacyMode));
       setSubmissions(await Promise.all((data.submissions ?? []).map(readSubmission)));
       setSubmissionCount(data.submissionCount ?? 0);
       setSubmissionsAtLastCluster(data.submissionsAtLastCluster ?? 0);
@@ -385,8 +388,8 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
 
     // E2E: a joiner sent us their public key, so wrap the room key for them and send it back.
     socket.on("pubkey_exchange", async ({ socketId, publicKey }) => {
-      // hashed identity rooms have no key exchange: everyone types the code instead
-      if (!encryptedRef.current || hashedRef.current) return;
+      // passcode rooms have no key exchange: everyone types the code instead
+      if (!encryptedRef.current || passcodeRef.current) return;
       try {
         const { keyPair, publicKey: hostPublicKey, roomKey } = await ensureHostKeys();
         const encryptedRoomKey = await wrapRoomKey(
@@ -771,6 +774,16 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
     );
   }
 
+  // what the step bar offers right now, and which handler each button runs
+  const guide = hostGuide(phase, { submissionCount, encrypted });
+  const stepActions = {
+    group: triggerClustering,
+    regroup: triggerClustering,
+    close: closeSubmissions,
+    end: endSession,
+    followups: openSecondRound,
+  };
+
   return (
     <div className="hd-root">
       <HostHeader
@@ -802,19 +815,11 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
             phase={phase}
             tags={tags}
             tagInput={tagInput}
-            error={error}
-            actionLoading={actionLoading}
-            expandLoading={expandLoading}
             hostNotes={hostNotes}
             onNotesChange={setHostNotes}
             onTagInput={setTagInput}
             onAddTag={addTag}
             onRemoveTag={removeTag}
-            canRecluster={phase === "RESULTS"}
-            onClose={closeSubmissions}
-            onCluster={triggerClustering}
-            onTriggerExpansion={openSecondRound}
-            onEndSession={endSession}
             onDeleteSession={deleteSession}
           />
           <ParticipantList
@@ -830,12 +835,23 @@ export default function HostDashboard({ code: initialCode, initialTitle = '', in
             passcode={unlocked ? passcode : null}
             open={showPasscode}
             onToggle={() => setShowPasscode(v => !v)}
-            locked={hashedIdentity && !unlocked}
+            locked={passcodeRoom && !unlocked}
             error={unlockError}
             busy={unlocking}
             onUnlock={unlock}
           />
-          {!(hashedIdentity && !unlocked) && <HostList
+          {!(passcodeRoom && !unlocked) && (
+            <StepBar
+              phase={phase}
+              hint={guide.hint}
+              primary={guide.primary}
+              secondary={guide.secondary}
+              busy={actionLoading || expandLoading}
+              error={error}
+              onAction={id => stepActions[id]?.()}
+            />
+          )}
+          {!(passcodeRoom && !unlocked) && <HostList
             phase={phase}
             clusters={clusters}
             submissions={submissions}

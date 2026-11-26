@@ -1,3 +1,4 @@
+import { phaseLabel } from "../../lib/steps.js";
 import { useState } from "react";
 import ThemePicker from '../shared/ThemePicker';
 import "./ParticipantHeader.css";
@@ -44,10 +45,10 @@ export default function ParticipantHeader({ phase = "OPEN", code, onBack, onOpen
           <button className="pd-hamburger" onClick={onOpenSidebar} title="Session history">
             <span /><span /><span />
           </button>
-          <button className="pd-back" onClick={onBack}>← back</button>
+          <button className="pd-back" onClick={onBack} title="Back to the home page">← Home</button>
           <div className="pd-header-meta">
-            <span className="pd-header-label">Participant</span>
-            <span className={`pd-phase pd-phase--${phase.toLowerCase()}`}>{phase}</span>
+            <span className="pd-header-label">Joined</span>
+            <span className={`pd-phase pd-phase--${phase.toLowerCase()}`}>{phaseLabel(phase)}</span>
           </div>
         </div>
 
@@ -58,11 +59,11 @@ export default function ParticipantHeader({ phase = "OPEN", code, onBack, onOpen
             <div className="pd-header-stats">
               <div className="pd-hstat">
                 <span className="pd-hstat-num">{submittedCount ?? 0}</span>
-                <span className="pd-hstat-label">submitted</span>
+                <span className="pd-hstat-label">sent</span>
               </div>
               <div className="pd-hstat">
                 <span className="pd-hstat-num">{inClusterCount ?? 0}</span>
-                <span className="pd-hstat-label">in cluster</span>
+                <span className="pd-hstat-label">grouped</span>
               </div>
             </div>
           )}

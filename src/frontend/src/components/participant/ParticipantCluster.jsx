@@ -99,7 +99,7 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
           <div className="pd-cluster-input-area">
             <textarea
               className="pd-textarea pd-textarea--sm"
-              placeholder="Write an answer for this cluster…"
+              placeholder="Write an answer for this topic…"
               value={answerDraft}
               onChange={e => setAnswerDraft(e.target.value)}
               rows={4}
@@ -123,7 +123,7 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
           </div>
         ) : (
           <button className="pd-add-q-btn" onClick={() => { setAnswerDraft(answer ?? ""); setEditingAnswer(true); }}>
-            {answer ? "Edit answer" : "Answer this cluster"}
+            {answer ? "Edit answer" : "Answer this topic"}
           </button>
         )
       )}
@@ -200,7 +200,7 @@ function ClusterCard({ cluster, answer, myTexts, upvotes, followups, phase, onUp
             <div className="pd-cluster-input-area">
               <textarea
                 className="pd-textarea pd-textarea--sm"
-                placeholder="Add your question to this cluster…"
+                placeholder="Add your question to this topic…"
                 value={clusterInput}
                 onChange={e => setClusterInput(e.target.value.slice(0, MAX_CHARS))}
                 rows={3}

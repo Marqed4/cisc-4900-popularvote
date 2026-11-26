@@ -70,7 +70,9 @@ export default function HostList({
     return (
       <div className="hd-waiting">
         <div className="hd-waiting-title">
-          {phase === "OPEN" ? "Waiting for submissions…" : "Ready to cluster."}
+          {submissions.length === 0
+            ? (phase === "OPEN" ? "Waiting for the first question…" : "No questions came in.")
+            : `${submissionCount} question${submissionCount !== 1 ? "s" : ""} so far`}
         </div>
 
         {submissions.length > 0 ? (
@@ -82,8 +84,8 @@ export default function HostList({
         ) : (
           <p className="hd-waiting-sub">
             {phase === "OPEN"
-              ? "Share the code with your audience. Submissions will appear here."
-              : "No submissions yet."
+              ? "Share the code or QR on the left. Questions appear here as people send them."
+              : "Nothing to group yet."
             }
           </p>
         )}
@@ -91,9 +93,8 @@ export default function HostList({
         {submissions.length > 0 && (
           <p className="hd-waiting-sub" style={{ marginTop: "0.75rem" }}>
             {hasEnough
-              ? `${submissionCount} submission${submissionCount !== 1 ? "s" : ""} ~ looking good, ready to cluster.`
-              : `${submissionCount} submission${submissionCount !== 1 ? "s" : ""} so far.`
-            }
+              ? "That is enough to group into topics."
+              : "A few more questions will give better topics."}
           </p>
         )}
       </div>
@@ -103,7 +104,7 @@ export default function HostList({
   if (phase === "CLUSTERING") {
     return (
       <div className="hd-waiting">
-        <div className="hd-waiting-title">Analysing submissions…</div>
+        <div className="hd-waiting-title">Grouping questions into topics…</div>
         <p className="hd-waiting-sub">This may take a few seconds.</p>
       </div>
     );
@@ -113,13 +114,13 @@ export default function HostList({
     return (
       <div className="hd-clusters">
         <div className="hd-round2-banner">
-          <div className="hd-round2-title">Round 2 is open</div>
-          <p className="hd-round2-sub">Participants can now submit follow-up questions. Close submissions when ready, then cluster.</p>
+          <div className="hd-round2-title">Follow-up questions are open</div>
+          <p className="hd-round2-sub">Participants can send follow-up questions now. Stop accepting when you have enough, then group them.</p>
         </div>
         {clusters.length > 0 && (
           <>
             <div className="hd-clusters-header">
-              <span className="hd-clusters-title">Round 1 results</span>
+              <span className="hd-clusters-title">Topics so far</span>
             </div>
             {clusters.map((cluster, i) => (
               <div key={cluster.id} className="hd-cluster hd-cluster--readonly">
@@ -127,7 +128,7 @@ export default function HostList({
                   <span className="hd-cluster-num">{i + 1}</span>
                   <div className="hd-cluster-info">
                     <div className="hd-cluster-query">{cluster.representative_query}</div>
-                    <div className="hd-cluster-count">{cluster.submission_count} submission{cluster.submission_count !== 1 ? "s" : ""}</div>
+                    <div className="hd-cluster-count">{cluster.submission_count} question{cluster.submission_count !== 1 ? "s" : ""}</div>
                   </div>
                 </div>
               </div>
@@ -147,21 +148,21 @@ export default function HostList({
       <div className="hd-clusters">
         <div className="hd-clusters-header">
           <span className="hd-clusters-title">
-            {clusters.length} cluster{clusters.length !== 1 ? "s" : ""}
+            {clusters.length} topic{clusters.length !== 1 ? "s" : ""}
           </span>
           <div className="hd-clusters-header-right">
             <span className="hd-clusters-sub">
-              {submissionCount} total submissions
+              {submissionCount} questions in total
             </span>
             <div className="hd-sort-toggle">
               <button
                 className={`hd-sort-btn${sortBy === "original" ? " hd-sort-btn--active" : ""}`}
                 onClick={() => setSortBy("original")}
-              >Original</button>
+              >Default order</button>
               <button
                 className={`hd-sort-btn${sortBy === "popular" ? " hd-sort-btn--active" : ""}`}
                 onClick={() => setSortBy("popular")}
-              >By popularity</button>
+              >Most votes</button>
             </div>
           </div>
         </div>
@@ -176,7 +177,7 @@ export default function HostList({
                       <span className="hd-cluster-num">Q{i + 1}.</span> {cluster.representative_query}
                     </div>
                     <div className="hd-cluster-count">
-                      {cluster.submission_count} submission{cluster.submission_count !== 1 ? "s" : ""}
+                      {cluster.submission_count} question{cluster.submission_count !== 1 ? "s" : ""}
                     </div>
                   </div>
                 </div>
@@ -184,7 +185,7 @@ export default function HostList({
                   <button
                     className="hd-cluster-delete"
                     onClick={() => onDeleteCluster(cluster.id)}
-                    title="Delete cluster"
+                    title="Remove this topic"
                   >×</button>
                 )}
               </div>
@@ -209,7 +210,7 @@ export default function HostList({
                   <>
                     <textarea
                       className="hd-answer-input"
-                      placeholder="Write a response to this cluster…"
+                      placeholder="Write an answer to this topic…"
                       value={answers[cluster.id] ?? ""}
                       onChange={e => onAnswerChange(cluster.id, e.target.value)}
                       rows={3}
@@ -233,7 +234,7 @@ export default function HostList({
                     className="hd-answer-display no-answer"
                     onClick={() => phase === "RESULTS" && onSetEditingAnswer(cluster.id)}
                   >
-                    Click to write a response…
+                    Click to write an answer…
                   </div>
                 )}
               </div>

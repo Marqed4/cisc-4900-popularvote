@@ -11,6 +11,9 @@ import ParticipantClusterList from "./ParticipantCluster";
 import ParticipantHeader from "./ParticipantHeader";
 import ParticipantInput from "./ParticipantInput";
 import PasscodeCard from "../shared/PasscodeCard";
+import StepBar from "../shared/StepBar";
+import { isEncrypted, isPasscode, normalizeMode } from "../../lib/privacy.js";
+import { participantGuide } from "../../lib/steps.js";
 import Summary from "../shared/Summary";
 
 import "./ParticipantLayout.css";
@@ -81,21 +84,22 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
   const keyPairRef = useRef(null);
   const roomKeyRef = useRef(null);
   const encryptedRef = useRef(false);
-  // null until the room's hashedIdentity flag has been read. hashed rooms get a per-session
+  // null until the room's privacy mode has been read. encrypted rooms get a per-session
   // pseudonym on join:room instead of the raw device id, see sessionUserHash.
-  const hashedRef = useRef(null);
-  // hashed identity rooms also lock the questions behind a decryption code the person types in.
-  // `hashed` drives the lock screen, `unlocked` flips once the typed code checks out. the key it
+  const modeRef = useRef(null);
+  // passcode rooms also lock the questions behind a code the person types in.
+  // `passcodeRoom` drives the lock screen, `unlocked` flips once the typed code checks out. the key it
   // makes only ever sits in roomKeyRef, so a refresh or a new tab asks for the code again.
-  const [hashed, setHashed] = useState(false);
+  const [passcodeRoom, setPasscodeRoom] = useState(false);
   const [unlocked, setUnlocked] = useState(false);
   const [unlockError, setUnlockError] = useState("");
   const [unlocking, setUnlocking] = useState(false);
 
-  // "my questions" are kept in localStorage so a refresh still shows them. in a hashed room that
-  // would be plaintext sitting in the browser, which is exactly what the code is there to prevent.
+  // "my questions" are kept in localStorage so a refresh still shows them. in an encrypted or
+  // passcode room that would be plaintext sitting in the browser, which is what the encryption
+  // is there to prevent, so those rooms keep them in memory only.
   function persistMine(next) {
-    if (!hashedRef.current) saveMySubmissions(code, next);
+    if (!isEncrypted(modeRef.current)) saveMySubmissions(code, next);
   }
 
   // Step 1, first load. the saved key has to be in the ref before fetchSession runs, otherwise
@@ -122,16 +126,16 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     // reconnects. if the lookup fails the hash is the safe guess (the room still counts one
     // device per person either way).
     async function joinIdentity() {
-      if (hashedRef.current === null) {
+      if (modeRef.current === null) {
         try {
           const res = await fetch(`${API_BASE}/api/sessions/${code}`);
           if (!res.ok) throw new Error("lookup failed");
-          hashedRef.current = !!(await res.json()).hashedIdentity;
+          modeRef.current = normalizeMode((await res.json()).privacyMode);
         } catch {
           return sessionUserHash(code);
         }
       }
-      return hashedRef.current ? sessionUserHash(code) : getDeviceId();
+      return isEncrypted(modeRef.current) ? sessionUserHash(code) : getDeviceId();
     }
 
     socket.on("connect", async () => {
@@ -148,8 +152,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       // E2E: send our public key so the host can hand us the room key.
       if (syncEncrypted) {
         encryptedRef.current = true;
-        // hashed rooms have no key exchange, the person types the code instead
-        if (!hashedRef.current) {
+        // passcode rooms have no key exchange, the person types the code instead
+        if (!isPasscode(modeRef.current)) {
           try {
             if (!keyPairRef.current) keyPairRef.current = await generateKeyPair();
             if (!roomKeyRef.current) {
@@ -281,9 +285,9 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       setPhase(data.phase ?? "OPEN");
       setTitle(data.title ?? '');
       setDescription(data.description ?? '');
-      encryptedRef.current = !!data.encrypted;
-      hashedRef.current = !!data.hashedIdentity;
-      setHashed(!!data.hashedIdentity);
+      encryptedRef.current = isEncrypted(data.privacyMode);
+      modeRef.current = normalizeMode(data.privacyMode);
+      setPasscodeRoom(isPasscode(data.privacyMode));
       if (socketIdRef.current) setIsCurator((data.curators ?? []).includes(socketIdRef.current));
       const decryptedClusters = await decryptClusters(data.clusters, data.encrypted, roomKeyRef.current);
       setClusters(decryptedClusters);
@@ -315,7 +319,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     }
   }
 
-  // hashed identity rooms: turn the typed code into the room key and test it against the key
+  // passcode rooms: turn the typed code into the room key and test it against the key
   // check the host's browser stored on the server. rooms without one (older ones) fall back to
   // decrypting a stored question, and an empty room has nothing to test against.
   async function unlock(input) {
@@ -542,8 +546,8 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
     );
   }
 
-  // hashed identity room and no code typed yet: nothing below can be read, so ask first
-  if (hashed && !unlocked) {
+  // passcode room and no code typed yet: nothing below can be read, so ask first
+  if (passcodeRoom && !unlocked) {
     return (
       <div className="pd-root">
         <ParticipantHeader {...headerProps} />
@@ -566,6 +570,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       <div className="pd-root">
         <ParticipantHeader {...headerProps} />
         <div className="pd-body">
+          <StepBar phase={phase} hint={participantGuide(phase)} />
           <Summary
             clusters={clusters}
             answers={answers}
@@ -590,6 +595,7 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
           </div>
         )}
         <div className="pd-body">
+          <StepBar phase={phase} hint={participantGuide(phase)} />
           <ParticipantInput
             phase={phase}
             submissions={submissions}
@@ -611,10 +617,11 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       <div className="pd-root">
         <ParticipantHeader {...headerProps} />
         <div className="pd-body">
+          <StepBar phase={phase} hint={participantGuide(phase)} />
           <div className="pd-waiting">
             <div className="pd-spinner" />
             <div className="pd-waiting-title">Grouping questions…</div>
-            <p className="pd-waiting-sub">The host is clustering submissions. Results will appear shortly.</p>
+            <p className="pd-waiting-sub">The host is sorting similar questions into topics. They will appear here by themselves.</p>
           </div>
         </div>
       </div>
@@ -628,11 +635,12 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       <div className="pd-root">
         <ParticipantHeader {...headerProps} />
         <div className="pd-body">
+          <StepBar phase={phase} hint={participantGuide(phase)} />
           {error && <div className="pd-error">{error}</div>}
           {isCurator && (
             <div className="pd-round2-banner">
-              <div className="pd-round2-title">You're a curator</div>
-              <p className="pd-round2-sub">The host has asked you to help answer. Use "Answer this cluster" on any cluster below.</p>
+              <div className="pd-round2-title">You're a co-host</div>
+              <p className="pd-round2-sub">The host asked you to help answer. Use "Answer this topic" on any topic below.</p>
             </div>
           )}
           <ParticipantInput
@@ -669,14 +677,15 @@ export default function Participant({ code, onBack, user, onOpenSidebar, darkMod
       <div className="pd-root">
         <ParticipantHeader {...headerProps} />
         <div className="pd-body">
+          <StepBar phase={phase} hint={participantGuide(phase)} />
           <div className="pd-round2-banner">
-            <div className="pd-round2-title">Round 2: Dig deeper</div>
-            <p className="pd-round2-sub">The host has answered the first round. Now's your chance to ask follow-up questions.</p>
+            <div className="pd-round2-title">Follow-up questions</div>
+            <p className="pd-round2-sub">The host has answered the first questions. Ask what is still unclear.</p>
           </div>
 
           {expansionPrompts.length > 0 && (
             <div className="pd-prompts">
-              <div className="pd-prompts-label">Need inspiration? Here are some areas to explore:</div>
+              <div className="pd-prompts-label">Not sure what to ask? Try one of these:</div>
               <ul className="pd-prompts-list">
                 {expansionPrompts.flatMap(p => p.questions).map((q, i) => (
                   <li key={i} className="pd-prompt-item">{q}</li>

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import "./HostSidebar.css";
 import { API_BASE } from "../../lib/api.js";
+import { NOTES_MAX_CHARS, PDF_MAX_PAGES, notesCount, appendNotes } from "../../lib/limits.js";
 
 function QRDisplay({ url }) {
   const canvasRef = useRef(null);
@@ -21,23 +22,14 @@ export default function HostSidebar({
   phase,
   tags,
   tagInput,
-  error,
-  actionLoading,
-  previewLoading,
-  expandLoading,
-  canRecluster,
   hostNotes,
   onNotesChange,
   onTagInput,
   onAddTag,
   onRemoveTag,
-  onClose,
-  onCluster,
-  onPreviewExpansion,
-  onTriggerExpansion,
-  onEndSession,
   onDeleteSession,
 }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [notesText, setNotesText] = useState('');
   const [notesSaving, setNotesSaving] = useState(false);
   const [notesSaved, setNotesSaved] = useState(false);
@@ -55,6 +47,7 @@ export default function HostSidebar({
   function copyLink() { navigator.clipboard.writeText(`${window.location.origin}?code=${code}`); }
 
   const sessionUrl = `${window.location.origin}?code=${code}`;
+  const notes = notesCount(notesText);
   const canEditTags = ["OPEN", "RESULTS", "ENDED"].includes(phase);
 
   async function saveNotes(text) {
@@ -91,11 +84,14 @@ export default function HostSidebar({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       if (!data.extracted) throw new Error('Could not extract text from PDF');
-      // append extracted text into the textarea so the host can add more docs before saving
-      const separator = notesText.trim() ? '\n\n---\n\n' : '';
-      setNotesText(notesText + separator + data.extracted);
-      setNotesError('');
-      // show a gentle hint instead of "Saved" since we haven't saved yet
+      // append extracted text into the textarea so the host can add more docs before saving.
+      // if it would pass the limit, say so and keep the notes as they were
+      const added = appendNotes(notesText, data.extracted);
+      if (!added.fits) {
+        setNotesError(`That PDF has ${added.needed.toLocaleString()} characters and only ${added.room.toLocaleString()} more fit. Shorten your notes or use a smaller PDF.`);
+      } else {
+        setNotesText(added.text);
+      }
     } catch (e) {
       setNotesError(e.message ?? 'Failed to upload PDF');
     } finally {
@@ -146,7 +142,7 @@ export default function HostSidebar({
       {phase !== 'ENDED' && phase !== 'DELETED' && (
         <section className="hd-card">
           <div className="hd-card-title">Host Notes <span className="hd-notes-private">private</span></div>
-          <p className="hd-notes-hint">Paste notes or add PDFs, each PDF is appended below. Hit Save when done. Participants never see this.</p>
+          <p className="hd-notes-hint">Paste notes or add PDFs, each PDF is appended below. Up to {NOTES_MAX_CHARS.toLocaleString()} characters, and PDFs up to {PDF_MAX_PAGES} pages. Hit Save when done. Participants never see this.</p>
           <textarea
             className="hd-notes-textarea"
             placeholder="Paste speaker notes, context, FAQs…"
@@ -154,11 +150,15 @@ export default function HostSidebar({
             onChange={e => setNotesText(e.target.value)}
             rows={5}
           />
+          <div className={`hd-notes-count${notes.over ? ' hd-notes-count--over' : ''}`} aria-live="polite">
+            {notes.count.toLocaleString()} / {notes.max.toLocaleString()}
+            {notes.over && ` · ${(-notes.left).toLocaleString()} over, shorten it to save`}
+          </div>
           <div className="hd-notes-actions">
             <button className="hd-btn-ghost" onClick={() => fileInputRef.current?.click()} disabled={notesSaving}>
               {notesSaving ? 'Extracting…' : '↑ Add PDF'}
             </button>
-            <button className="hd-btn-ghost" onClick={() => saveNotes(notesText)} disabled={notesSaving}>
+            <button className="hd-btn-ghost" onClick={() => saveNotes(notesText)} disabled={notesSaving || notes.over}>
               {notesSaving ? 'Saving…' : notesSaved ? '✓ Saved' : 'Save notes'}
             </button>
           </div>
@@ -167,64 +167,21 @@ export default function HostSidebar({
         </section>
       )}
 
-      <section className="hd-card hd-actions">
-        <div className="hd-card-title">Actions</div>
-        {error && <div className="hd-error">{error}</div>}
-
-        {phase === "OPEN" && (
-          <button className="hd-btn-primary" onClick={onClose} disabled={actionLoading}>
-            {actionLoading ? "Closing…" : "Close Submissions"}
-          </button>
-        )}
-
-        {(phase === "OPEN" || phase === "CLOSED") && (
-          <button
-            className={phase === "OPEN" ? "hd-btn-ghost hd-btn-ghost--full" : "hd-btn-primary"}
-            onClick={onCluster}
-            disabled={actionLoading}
-          >
-            {actionLoading ? "Clustering…" : "Trigger Clustering"}
-          </button>
-        )}
-
-        {phase === "CLUSTERING" && (
-          <div className="hd-clustering-status">
-            <div className="hd-spinner" />
-            <span>Clustering in progress…</span>
-          </div>
-        )}
-
-        {phase === "RESULTS" && (
-          <>
-            <button className="hd-btn-primary" onClick={onCluster} disabled={actionLoading || !canRecluster}>
-              {actionLoading ? "Clustering…" : "Re-cluster"}
-            </button>
-            <button className="hd-btn-end" onClick={onEndSession} disabled={actionLoading}>
-              {actionLoading ? "Ending…" : "End Session"}
-            </button>
-          </>
-        )}
-
-        {phase === "EXPANDING" && (
-          <>
-            <button className="hd-btn-primary" onClick={onClose} disabled={actionLoading}>
-              {actionLoading ? "Closing…" : "Close Submissions"}
-            </button>
-            <button className="hd-btn-primary" onClick={onCluster} disabled={actionLoading}>
-              {actionLoading ? "Clustering…" : "Trigger Clustering"}
-            </button>
-          </>
-        )}
-
-        {phase === "ENDED" && (
-          <>
-            <div className="hd-ended-msg">Session has ended.</div>
-            <button className="hd-btn-end" onClick={onDeleteSession}>
-              Delete Session
-            </button>
-          </>
-        )}
-      </section>
+      {phase === "ENDED" && (
+        <section className="hd-card hd-actions">
+          <div className="hd-card-title">Session</div>
+          <div className="hd-ended-msg">This session has ended.</div>
+          {confirmDelete ? (
+            <>
+              <div className="hd-ended-msg">Delete it for good? The summary and all questions are removed.</div>
+              <button className="hd-btn-end" onClick={onDeleteSession}>Yes, delete</button>
+              <button className="hd-btn-ghost hd-btn-ghost--full" onClick={() => setConfirmDelete(false)}>Keep it</button>
+            </>
+          ) : (
+            <button className="hd-btn-end" onClick={() => setConfirmDelete(true)}>Delete session</button>
+          )}
+        </section>
+      )}
 
     </aside>
   );
